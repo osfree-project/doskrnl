@@ -28,13 +28,13 @@
 ;
 
 
-		%include "segs.inc"
-		%include "stacks.inc"
+		include segs.inc
+		include stacks.inc
 
-segment	HMA_TEXT
-                global  _reloc_call_CharMapSrvc
-                extern  _DosUpChar
-                extern  _DGROUP_
+HMA_TEXT	segment	
+                public  _reloc_call_CharMapSrvc
+                extern  _DosUpChar: near
+                extern  _DGROUP_: near
 ;
 ; CharMapSrvc:
 ;       User callable character mapping service.
@@ -53,7 +53,7 @@ _reloc_call_CharMapSrvc:
                 push    bx
 
                 push    ax          ; arg of _upChar
-                mov     ds,[cs:_DGROUP_]
+                mov     ds, word ptr [cs:_DGROUP_]
 
                 call    _DosUpChar
                 ;add     sp, byte 2	// next POP retrieves orig AX
@@ -71,3 +71,7 @@ _reloc_call_CharMapSrvc:
                 pop     ds
                 Restore386Registers
                 retf                            ; Return far
+
+HMA_TEXT	ends
+		end
+		

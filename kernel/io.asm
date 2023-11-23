@@ -28,21 +28,21 @@
 ; $Header$
 ;
 
-                %include "segs.inc"
-                %include "stacks.inc"
+                include segs.inc
+                include stacks.inc
 
-                extern   ConTable
-                extern   LptTable
-                extern   ComTable
-                extern   uPrtNo
-                extern   CommonNdRdExit
+                extern   ConTable: near
+                extern   LptTable: near
+                extern   ComTable: near
+                extern   uPrtNo: near
+                extern   CommonNdRdExit: near
 ;!!                extern   _NumFloppies
-                extern   blk_stk_top
-                extern   clk_stk_top
-                extern   _reloc_call_blk_driver
-                extern   _reloc_call_clk_driver
+                extern   blk_stk_top: near
+                extern   clk_stk_top: near
+                extern   _reloc_call_blk_driver: near
+                extern   _reloc_call_clk_driver: near
 
-                extern   _TEXT_DGROUP
+                extern   _TEXT_DGROUP: near
 
 ;---------------------------------------------------
 ;
@@ -72,7 +72,7 @@ huge    equ     26                      ; First block (32-bit) to transfer
 ; device initialization into a single io_init function that may be placed 
 ; into a discardable code segmemnt.
 ;
-segment	_IO_FIXED_DATA
+_IO_FIXED_DATA	segment	
 
                 ;
                 ; The "CON" device
@@ -80,7 +80,7 @@ segment	_IO_FIXED_DATA
                 ; This device is the standard console device used by
                 ; DOS-C and kernel
                 ;
-                global  _con_dev
+                public  _con_dev
 _con_dev        equ     $
                 dw      _prn_dev,LGROUP
                 dw      8013h           ; con device (stdin & stdout)
@@ -91,7 +91,7 @@ _con_dev        equ     $
                 ;
                 ; Generic prn device that can be redirected via mode
                 ;
-                global  _prn_dev
+                public  _prn_dev
 _prn_dev        dw      _aux_dev,LGROUP
                 dw      0A040h
                 dw      GenStrategy
@@ -101,7 +101,7 @@ _prn_dev        dw      _aux_dev,LGROUP
                 ;
                 ; Generic aux device that can be redirected via mode
                 ;
-                global  _aux_dev
+                public  _aux_dev
 _aux_dev        dw      _Lpt1Dev,LGROUP
                 dw      8000h
                 dw      GenStrategy
@@ -154,7 +154,7 @@ _Com4Dev        dw      _clk_dev,LGROUP
                 ;
                 ; Header for clock device
                 ;
-                global  _clk_dev
+                public  _clk_dev
 _clk_dev        equ     $
                 dw      _blk_dev,LGROUP
                 dw      8008h           ; clock device
@@ -165,7 +165,7 @@ _clk_dev        equ     $
                 ;
                 ; Header for device
                 ;
-                global  _blk_dev
+                public  _blk_dev
 _blk_dev        equ     $
                 dd      -1
                 dw      08c2h           ; block device with ioctl
@@ -175,13 +175,14 @@ _blk_dev        equ     $
                 db      0,0,0,0,0,0,0
 
 
+_IO_FIXED_DATA ENDS
 ;
 ; Temporary table until next release
 ;
-segment	_IO_FIXED_DATA
+_IO_FIXED_DATA segment	
 DiskTable       db      0
 
-
+_IO_FIXED_DATA ENDS
 ;
 ; Local storage
 ;
@@ -193,8 +194,8 @@ clk_dos_stk	resw	1
 clk_dos_seg	resw	1
 %endif
 
-segment _IO_TEXT
-		global	_ReqPktPtr
+_IO_TEXT segment 
+		public	_ReqPktPtr
 _ReqPktPtr	dd	0
 uUnitNumber	dw	0
 
@@ -212,10 +213,10 @@ uUnitNumber	dw	0
 ;       at any time.  The request is stored into memory in the one and only
 ;       location available for that purpose.
 ;
-                global GenStrategy
+                public GenStrategy
 GenStrategy:
-                mov     word [cs:_ReqPktPtr],bx
-                mov     word [cs:_ReqPktPtr+2],es
+                mov     word ptr [cs:_ReqPktPtr],bx
+                mov     word ptr [cs:_ReqPktPtr+2],es
                 retf
 
 
@@ -321,7 +322,7 @@ Lpt3Intr:
 
 LptCmnIntr:
                 mov     si,LptTable
-                mov     [cs:uPrtNo],ah
+                mov     byte ptr [cs:uPrtNo],ah
                 jmp     short DiskIntrEntry
 
 
@@ -356,7 +357,7 @@ ComCmnIntr:
 
 DskIntr:
                 push    si
-                mov     si,DiskTable
+                mov     si, offset DiskTable
 CharIntrEntry:
                 push    ax
 DiskIntrEntry:
@@ -367,9 +368,9 @@ DiskIntrEntry:
                 push    ds
                 push    es
                 push    bx
-                mov     byte [cs:uUnitNumber],al
+                mov     byte ptr [cs:uUnitNumber],al
                 lds     bx,[cs:_ReqPktPtr]
-                test    byte [cs:si],80h
+                test    byte ptr [cs:si],80h
                 je      AsmType
 
                 mov     al,[bx+cmd]
@@ -383,9 +384,9 @@ DiskIntrEntry:
                 push    ds
                 push    bx
                 mov     bp,sp
-                mov	ds,[cs:_TEXT_DGROUP]
+                mov	ds, word ptr [cs:_TEXT_DGROUP]
                 cld
-                call    word [cs:si+1]
+                call    word ptr [cs:si+1]
                 pop     cx
                 pop     cx
                 jmp     short StoreStatus
@@ -404,9 +405,9 @@ AsmType:        mov     al,[bx+unit]
                 xchg    di,ax
 
                 les     di,[bx+trans]
-                mov     ds,[cs:_TEXT_DGROUP]
+                mov     ds,word ptr [cs:_TEXT_DGROUP]
                 cld
-                jmp     word [cs:si+1]
+                jmp     word ptr [cs:si+1]
 
 ;
 ; Name:
@@ -425,13 +426,13 @@ AsmType:        mov     al,[bx+unit]
 ;       occurred during partial read/write operation.  _IOErrorExit is a 
 ;       generic error exit that sets done and error.
 ;
-                global  _IOSuccess
+                public  _IOSuccess
 _IOSuccess:
                 lds     bx,[cs:_ReqPktPtr]
                 xor     ax,ax
                 mov     [bx+count],ax
 
-                global  _IOExit
+                public  _IOExit
 _IOExit:
                 mov     ah,1
 
@@ -450,20 +451,20 @@ StoreStatus:
                 retf
 
 
-                global  _IODone
+                public  _IODone
 _IODone:
                 mov     ah,3
                 jmp     short StoreStatus
 
-                global  _IOCommandError
+                public  _IOCommandError
 _IOCommandError:
                 mov     al,3
 
-                global  _IOErrCnt
+                public  _IOErrCnt
 _IOErrCnt: 
                 lds     bx,[cs:_ReqPktPtr]
                 sub     [bx+count],cx
-                global  _IOErrorExit
+                public  _IOErrorExit
 _IOErrorExit:
                 mov     ah,81h
                 jmp     short StoreStatus
@@ -480,7 +481,7 @@ _IOErrorExit:
 ;       no segment registers and makes a safe call regardless of driver 
 ;       state.
 ;
-                global  GetUnitNum
+                public  GetUnitNum
 GetUnitNum:
                 mov     dx,[cs:uUnitNumber]
                 ret
@@ -538,7 +539,7 @@ clk_and_blk_common:
                 pushf                                   ; put flags in cx
                 pop     cx
                 cli                                     ; no interrupts
-                mov     ss,[cs:_TEXT_DGROUP]
+                mov     ss,word ptr [cs:_TEXT_DGROUP]
                 mov     sp,[cs:bx]
                 
                 push    cx
@@ -557,17 +558,17 @@ clk_and_blk_common:
                 push    es
                 Protect386Registers
 
-                mov     ds,[cs:_TEXT_DGROUP]        ; 
+                mov     ds, word ptr [cs:_TEXT_DGROUP]        ; 
                 
                 
-                push    word [cs:_ReqPktPtr+2]
-                push    word [cs:_ReqPktPtr]
-                call    far [cs:bx+2]
+                push    word ptr [cs:_ReqPktPtr+2]
+                push    word ptr [cs:_ReqPktPtr]
+                call    far ptr [cs:bx+2]
                 pop     cx
                 pop     cx
                 
                 les     bx,[cs:_ReqPktPtr]		; now return completion code
-                mov     word [es:bx+status],ax  ; mark operation complete
+                mov     word ptr [es:bx+status],ax  ; mark operation complete
                 
                 
                 Restore386Registers
@@ -592,3 +593,7 @@ clk_and_blk_common:
                 pop     bx
                 popf
                 retf
+
+_IO_TEXT	ENDS
+		END
+		

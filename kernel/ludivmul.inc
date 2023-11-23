@@ -1,7 +1,7 @@
 ;  this one adapted from elks, http://elks.sourceforge.net
 ;  multiply cx:bx * dx:ax, result in dx:ax        
 
-%macro LMULU 0
+LMULU	macro
 
         push    si
         push    cx
@@ -18,11 +18,11 @@
         pop     si
 	ret
 
-%endmacro
+	endm
 
 ;  divide dx:ax / cx:bx, quotient in dx:ax, remainder in cx:bx
 
-%macro LDIVMODU 0
+LDIVMODU	macro
 ; this one is adapted from an assembly gem:
 ; gem writer: Norbert Juffa, norbert.juffa@amd.com
 
@@ -51,20 +51,13 @@
 ; destroys:
 ;   flags
 ;
-%ifdef STDCALL
-	push bp
-	mov bp, sp
-	mov ax, [bp+6]
-	mov dx, [bp+8]
-	mov bx, [bp+10]
-	mov cx, [bp+12]
-	pop bp
-%endif
-
+local big_divisor
+local one_div
+local shift_loop
 	test    cx, cx             ; divisor > 2^16-1 ?
-	jnz     %%big_divisor      ; yes, divisor > 2^16-1
+	jnz     big_divisor      ; yes, divisor > 2^16-1
 	cmp     dx, bx             ; only one division needed ? (cx = 0)
-	jb      %%one_div          ; yes, one division sufficient
+	jb      one_div          ; yes, one division sufficient
 
 
 	xchg    cx, ax             ; save dividend-lo in cx, ax=0
@@ -72,26 +65,26 @@
 	div     bx                 ; quotient-hi in ax
 	xchg    ax, cx             ; cx = quotient-hi, ax =dividend-lo
 
-%%one_div:    
+one_div:    
 	div     bx                 ; ax = quotient-lo
 	mov     bx, dx             ; bx = remainder-lo
 	mov     dx, cx             ; dx = quotient-hi(quotient in dx:ax)
 	xor     cx, cx             ; cx = remainder-hi (rem. in cx:bx)
 	ret
 
-%%big_divisor:
+big_divisor:
 	push    si                 ; save temp
 	push    di                 ;  variables
 	push    dx                 ; save
 	push    ax                 ;  dividend
 	mov     si, bx             ; divisor now in
 	mov     di, cx             ;  di:si and cx:bx
-%%shift_loop:
+shift_loop:
 	shr     dx, 1              ; shift both
 	rcr     ax, 1              ;  dividend
 	shr     cx, 1              ;   and divisor
 	rcr     bx, 1              ;    right by 1 bit
-        jnz     %%shift_loop       ;     loop if di non-zero (rcr does not touch ZF)
+        jnz     shift_loop       ;     loop if di non-zero (rcr does not touch ZF)
 	div     bx                 ; compute quotient dx:ax>>x / cx:bx>>x (stored in ax; remainder in dx not used)
 	pop     bx                 ; get dividend lo-word
 	mov     cx, ax             ; save quotient
@@ -116,9 +109,9 @@
 	pop     si                 ;  variables
 	ret
 
-%endmacro
+	endm
 
-%macro LSHLU 0
+LSHLU	macro
 	pop bx
 	popargs {dx,ax},cx
 	push bx
@@ -127,9 +120,9 @@
 	rcl dx, 1
 	loop %%loop
 %%ret:	ret
-%endmacro
+	endm
 
-%macro LSHRU 0
+LSHRU	macro
 	pop bx
 	popargs {dx,ax},cx
 	push bx
@@ -138,4 +131,4 @@
 	rcr ax, 1
 	loop %%loop
 %%ret:	ret
-%endmacro
+	endm

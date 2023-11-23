@@ -28,9 +28,10 @@
 ; $Id: floppy.asm 980 2004-06-19 19:41:47Z perditionc $
 ;
 
-%include "../kernel/segs.inc"
-%include "../hdr/stacks.inc"
-segment HMA_TEXT
+include ../kernel/segs.inc
+include ../hdr/stacks.inc
+
+HMA_TEXT segment 
 
 ;
 ; BOOL ASMPASCAL fl_reset(WORD drive);
@@ -39,7 +40,7 @@ segment HMA_TEXT
 ; returns TRUE if successful.
 ;
 
-		global	FL_RESET
+		public	FL_RESET
 FL_RESET:
 		pop	ax		; return address
 		pop	dx		; drive (DL only)
@@ -58,7 +59,7 @@ FL_RESET:
 ; returns 1 if disk has changed, 0 if not, 0xFFFF if error.
 ;
 
-		global	FL_DISKCHANGED
+		public	FL_DISKCHANGED
 FL_DISKCHANGED:
 		pop	ax		; return address
 		pop	dx		; drive (DL only, 00h-7Fh)
@@ -90,22 +91,22 @@ fl_dc:	cbw			; extend AL into AX, AX={1,0,-1}
 ; Returns 0 if successful, error code otherwise.
 ;
 
-		global	FL_FORMAT
+		public	FL_FORMAT
 FL_FORMAT:
                 mov     ah,5            ; format track
                 jmp     short fl_common
 
-		global	FL_READ
+		public	FL_READ
 FL_READ:
                 mov     ah,2            ; read sector(s)
                 jmp short fl_common
                 
-		global	FL_VERIFY
+		public	FL_VERIFY
 FL_VERIFY:
                 mov     ah,4            ; verify sector(s)
                 jmp short fl_common
                 
-		global	FL_WRITE
+		public	FL_WRITE
 FL_WRITE:
                 mov     ah,3            ; write sector(s)
 
@@ -113,8 +114,8 @@ fl_common:
                 push    bp              ; setup stack frame
                 mov     bp,sp
 
-arg drive, head, track, sector, count, {buffer,4}
-                mov     cx,[.track]     ; cylinder number
+;arg drive, head, track, sector, count, {buffer,4}
+                mov     cx,[bp+12]     ; cylinder number
 
                 mov     al,1            ; this should be an error code                     
                 cmp     ch,3            ; this code can't write above 3FFh=1023
@@ -123,13 +124,13 @@ arg drive, head, track, sector, count, {buffer,4}
                 xchg    ch,cl           ; ch=low 8 bits of cyl number
                 ror     cl,1            ; bits 8-9 of cylinder number...
                 ror     cl,1            ; ...to bits 6-7 in CL
-                or      cl,[.sector]	; or in the sector number (bits 0-5)
+                or      cl,[bp+10]	; or in the sector number (bits 0-5)
 
-                mov     al,[.count]     ; count of sectors to read/write/...
-                les     bx,[.buffer]    ; Load 32 bit buffer ptr into ES:BX
+                mov     al,[bp+8]     ; count of sectors to read/write/...
+                les     bx,[bp+4]    ; Load 32 bit buffer ptr into ES:BX
 
-                mov     dl,[.drive]     ; drive (if or'ed 80h its a hard drive)
-                mov     dh,[.head]      ; get the head number
+                mov     dl,[bp+16]     ; drive (if or'ed 80h its a hard drive)
+                mov     dh,[bp+14]      ; get the head number
 
                 int     13h             ; process sectors
 
@@ -146,7 +147,7 @@ fl_error:
 ; Returns 0 if successful, error code otherwise.
 ;
 
-		global  FL_LBA_READWRITE
+		public  FL_LBA_READWRITE
 FL_LBA_READWRITE:
 		push    bp              ; setup stack frame
 		mov     bp,sp
@@ -154,10 +155,10 @@ FL_LBA_READWRITE:
 		push    ds
 		push    si              ; wasn't in kernel < KE2024Bo6!!
 
-arg drive, mode, {dap_p,4}
-		mov     dl,[.drive]     ; drive (if or'ed with 80h a hard drive)
-		mov     ax,[.mode]      ; get the command
-		lds     si,[.dap_p]     ; get far dap pointer
+;arg drive, mode, {dap_p,4}
+		mov     dl,[bp+10]     ; drive (if or'ed with 80h a hard drive)
+		mov     ax,[bp+8]      ; get the command
+		lds     si,[bp+4]     ; get far dap pointer
 		int     13h             ; read from/write to drive
 		
 		pop     si
@@ -173,7 +174,7 @@ arg drive, mode, {dap_p,4}
 ; void ASMPASCAL fl_readkey (void);
 ;
 
-		global	FL_READKEY
+		public	FL_READKEY
 FL_READKEY:     xor	ah, ah
 		int	16h
 		ret
@@ -182,10 +183,12 @@ FL_READKEY:     xor	ah, ah
 ; COUNT ASMPASCAL fl_setdisktype (WORD drive, WORD type);
 ;
 
-		global	FL_SETDISKTYPE
+		public	FL_SETDISKTYPE
 FL_SETDISKTYPE:
 		pop	bx		; return address
-		popargs dx,ax		; drive number(dl),disk format type(al)
+		;popargs dx,ax		; drive number(dl),disk format type(al)
+		pop	ax
+		pop	dx
 		push	bx		; restore stack
 		mov	ah,17h	; floppy set disk type for format
 		int	13h
@@ -197,10 +200,13 @@ ret_AH:
 ;
 ; COUNT ASMPASCAL fl_setmediatype (WORD drive, WORD tracks, WORD sectors);
 ;
-		global	FL_SETMEDIATYPE
+		public	FL_SETMEDIATYPE
 FL_SETMEDIATYPE:
 		pop	ax		; return address
-		popargs dx,cx,bx	; drive number,#tracks,sectors/track
+		;popargs dx,cx,bx	; drive number,#tracks,sectors/track
+		pop	bx
+		pop	cx
+		pop	dx
 		push	ax		; restore stack
 		push	di
 
@@ -220,10 +226,13 @@ FL_SETMEDIATYPE:
                 xor     dx,dx
                 mov     es,dx
 		cli
-                pop     word [es:0x1e*4+2] ; set int 0x1e table to es:di
-                mov     [es:0x1e*4  ], di
+                pop     word ptr es:[01eh*4+2] ; set int 0x1e table to es:di
+                mov     es:[01eh*4], di
 		sti
 skipint1e:		
                 pop     di
 		jmp	short ret_AH
                 
+HMA_TEXT	ends
+		end
+		

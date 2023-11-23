@@ -29,28 +29,28 @@
 ;
 
 
-		%include "segs.inc"
+		include segs.inc
 
-                extern  _user_r
+                extern  _user_r: near
 
-                extern  _break_flg     ; break detected flag
-                extern  _int21_handler ; far call system services
+                extern  _break_flg: near     ; break detected flag
+                extern  _int21_handler: near ; far call system services
 
-                %include "stacks.inc"
+                include stacks.inc
 
-segment HMA_TEXT
+HMA_TEXT	segment 
 
-                extern   _DGROUP_
+                extern   _DGROUP_: near
 
 ;
 ;       Special call for switching processes
 ;
 ;       void exec_user(iregs far *irp, int disable_a20)
 ;
-                global  _exec_user
+                public  _exec_user
 _exec_user:
 
-;                PUSH$ALL
+;                PUSH_ALL
 ;                mov     ds,[_DGROUP_]
 ;                cld
 ;
@@ -69,29 +69,38 @@ _exec_user:
                 mov     sp,bp                   ; set-up user stack
                 sti
 ;
-                POP$ALL
-                extern _ExecUserDisableA20
-                jmp DGROUP:_ExecUserDisableA20
+                POP_ALL
+                extern _ExecUserDisableA20: near
+		assume ds:DGROUP
+                jmp _ExecUserDisableA20 ;DGROUP:...
+		assume ds:nothing
 do_iret:
-                extern _int21_iret
+                extern _int21_iret: near
                 jmp _int21_iret
 
-segment _LOWTEXT
+HMA_TEXT	ends
+
+_LOWTEXT	segment 
 
 
 ;; Called whenever the BIOS detects a ^Break state
-                global  _got_cbreak
+                public  _got_cbreak
 _got_cbreak:
 	push ds
 	push ax
 	mov ax, 40h
 	mov ds, ax
-	or byte [71h], 80h	;; set the ^Break flag
+	push si
+	mov si, 71h
+	or byte ptr [si], 80h	;; set the ^Break flag
+	pop si
 	pop ax
 	pop ds
 	iret
 
-segment	HMA_TEXT
+_LOWTEXT	ends
+
+HMA_TEXT	segment	
 
 ;
 ;       Special call for switching processes during break handling
@@ -125,11 +134,11 @@ segment	HMA_TEXT
 ;       |       ax      |       0       <--- bp & sp after mov bp,sp
 ;       +---------------+
 ;
-                global  _spawn_int23
+                public  _spawn_int23
 _spawn_int23:
 
 ;; 1999/03/27 ska - comments: see cmt1.txt
-		mov ds, [cs:_DGROUP_]		;; Make sure DS is OK
+		mov ds, word ptr [cs:_DGROUP_]		;; Make sure DS is OK
 		mov bp, [_user_r]
 
                 ; restore to user stack
@@ -146,14 +155,14 @@ _spawn_int23:
 ;      
 ;      this patch helps FreeDos to survive CtrlC,
 ;      but should clearly be done somehow else.
-                mov     ss, [_user_r+2]
+                mov     ss, word ptr [_user_r+2]
                 RestoreSP
 
                 sti
 
                 ; get all the user registers back
                 Restore386Registers
-                POP$ALL
+                POP_ALL
 
                 ;; Construct the piece of code into the stack
 
@@ -172,18 +181,18 @@ _spawn_int23:
 		;; This value POPed and decremented by 7 is the value SP must
 		;; contain, if the INT-23 was returned with RETF2/IRET.
 
-  		sub sp, byte 8		;; code piece needs 7 bytes --> 4 words
+  		sub sp, 8		;; code piece needs 7 bytes --> 4 words
   		push ss			;; prepare jump to INT-23 via RETF
   		push bp			;; will be offset / temp: saved BP
   		mov bp, sp
-  		add bp, byte 4		;; position BP onto INT-23
-  		mov word [bp], 23cdh		;; INT 23h
-  		mov byte [bp+2], 9ah			;; CALL FAR immediate
-  		mov word [bp+3], ??regain_control_int23
-  		mov word [bp+5], cs
+  		add bp, 4		;; position BP onto INT-23
+  		mov word ptr [bp], 23cdh		;; INT 23h
+  		mov byte ptr [bp+2], 9ah			;; CALL FAR immediate
+  		mov word ptr [bp+3], ??regain_control_int23
+  		mov word ptr [bp+5], cs
 
   		;; complete the jump to INT-23 via RETF and restore BP
-  		xchg word [bp-4], bp
+  		xchg word ptr [bp-4], bp
 
                 clc			;; set default action --> resume
                 ; invoke the int 23 handler its address has been constructed
@@ -225,9 +234,9 @@ _spawn_int23:
 				push bp
 				mov bp, sp
 				mov bp, [bp+2]		;; get should-be address + 7
-				mov word [bp-3], ax		;; save AX
+				mov word ptr [bp-3], ax		;; save AX
 				pop ax				;; old BP
-				mov word [bp-1], ax		;; preserve saved BP
+				mov word ptr [bp-1], ax		;; preserve saved BP
 				mov ax, bp
 				dec ax			;; last used word of stack
 				dec ax			;; Don't use SUB to keep Carry flag
@@ -238,7 +247,7 @@ _spawn_int23:
 				;; ==> Test if BP - 7 == AX + 4
 				;; ==> Test if AX + 4 - BP + 7 == 0
 				pushf			;; preserve Carry flag
-				add ax, byte 4 + 7
+				add ax, 4 + 7
 				sub ax, bp		;; AX := SP + 4
 				pop ax			;; saved Carry flag
 				jz ??int23_ign_carry ;; equal -> IRET --> ignore Carry
@@ -255,8 +264,8 @@ _spawn_int23:
 				;; AH value, which is passed to the _respawn_ call
 				;; into 0, which is "Terminate program".
 				push ds			;; we need DGROUP
-				mov ds, [cs:_DGROUP_]
-				inc byte [_break_flg]
+				mov ds, word ptr [cs:_DGROUP_]
+				inc byte ptr [_break_flg]
 				pop ds
 
 				xor ah, ah		;; clear ah --> perform DOS-00 --> terminate
@@ -280,21 +289,26 @@ _spawn_int23:
 ;                ret
 ;_disable        endp
 
-        extern _p_0_tos,_P_0
+        extern _p_0_tos: near
+	extern _P_0: near
 
 ; prepare to call process 0 (the shell) from P_0() in C
 
-    global reloc_call_p_0
+    public reloc_call_p_0
 reloc_call_p_0:
         pop ax          ; return address (32-bit, unused)
         pop ax
         pop ax          ; fetch parameter 0 (32-bit) from the old stack
         pop dx
-        mov ds,[cs:_DGROUP_]
+        mov ds, word ptr [cs:_DGROUP_]
         cli
-        mov ss,[cs:_DGROUP_]
+        mov ss, word ptr [cs:_DGROUP_]
         mov sp,_p_0_tos ; load the dedicated process 0 stack
         sti
         push dx         ; pass parameter 0 onto the new stack
         push ax
         call _P_0       ; no return, allow parameter fetch from C
+
+HMA_TEXT	ends
+		end
+		

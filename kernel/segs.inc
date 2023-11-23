@@ -28,96 +28,102 @@
 ;
 
 ; CPU specification -- putting it here because all .asm files include this
-; file __NASM_VER__ was introduced in NASM after CPU -- ver 0.98 doesn't
-; understand it
-%ifdef __NASM_VER__
-%if XCPU == 86
-CPU 8086
-%else
-CPU XCPU
-%endif
-%endif
+; file. 
+	.8086
 
-; for OW on Linux:
-%ifdef owlinux
-%define WATCOM
-%endif
+PGROUP	group             PSP
+LGROUP	group             _IRQTEXT, _LOWTEXT, _IO_TEXT, _IO_FIXED_DATA, _TEXT
+DGROUP	group             _FIXED_DATA, _BSS, _DATA, _DATAEND, CONST, CONST2, DCONST, DYN_DATA
+TGROUP	group             HMA_TEXT_START, HMA_TEXT, HMA_TEXT_END, INIT_TEXT_START, INIT_TEXT, INIT_TEXT_END
+IGROUP	equ TGROUP
+I_GROUP	group            ID_B, I_DATA, ICONST, ICONST2, ID_E, IB_B, I_BSS, IB_E
+INITSIZE equ init_end; wrt INIT_TEXT
+INITTEXTSIZE equ __INIT_DATA_START; wrt INIT_TEXT
 
-%ifidn __OUTPUT_FORMAT__, obj
-group   PGROUP          PSP
-group   LGROUP          _IRQTEXT _LOWTEXT _IO_TEXT _IO_FIXED_DATA _TEXT
-group   DGROUP          _FIXED_DATA _BSS _DATA _DATAEND CONST CONST2 DCONST DYN_DATA
-%ifdef WATCOM
-group   TGROUP          HMA_TEXT_START HMA_TEXT HMA_TEXT_END INIT_TEXT_START INIT_TEXT INIT_TEXT_END
-%define IGROUP          TGROUP
-group   I_GROUP         ID_B I_DATA ICONST ICONST2 ID_E IB_B I_BSS IB_E
-%else
-group   TGROUP          HMA_TEXT_START HMA_TEXT HMA_TEXT_END
-group   IGROUP          INIT_TEXT_START INIT_TEXT INIT_TEXT_END
-group   I_GROUP         ID_B ID ID_E IC IDATA IB_B IB IB_E
-%endif
-%define class(x) class=x
-%define nobits
-%define exec
-%define INITSIZE init_end wrt INIT_TEXT
-%define INITTEXTSIZE __INIT_DATA_START wrt INIT_TEXT
 
-%else ; using ELF
+PSP	segment PUBLIC 'PSP'
+PSP	ENDS
 
-BITS 16
-; groups are defined in the linker script kernel.ld
-extern PGROUP
-extern DGROUP
-extern LGROUP
-extern TGROUP
-extern IGROUP
-extern I_GROUP
-%define class(x)
-%define stack
-extern INITSIZE
-%define INITTEXTSIZE __InitTextEnd
+_IRQTEXT	segment PUBLIC 'LCODE'
+_IRQTEXT	ENDS
 
-%endif
+_LOWTEXT	segment PUBLIC 'LCODE'
+_LOWTEXT	ENDS
 
-segment PSP             class(PSP)
-segment	_IRQTEXT	class(LCODE) exec
-segment	_LOWTEXT	class(LCODE) exec
-segment	_IO_TEXT	class(LCODE) exec
-segment	_IO_FIXED_DATA	class(LCODE) align=2
-segment	_TEXT		class(LCODE) exec
-segment	_FIXED_DATA	class(FDATA) align=16
-segment	_BSS		class(BSS) align=2
-segment _DATA           class(DATA) align=2
-segment _DATAEND        class(DATA) align=1
+_IO_TEXT	segment	PUBLIC 'LCODE'
+_IO_TEXT	ENDS
+
+_IO_FIXED_DATA	segment	PUBLIC WORD 'LCODE'
+_IO_FIXED_DATA	ENDS
+
+_TEXT	segment	PUBLIC 'LCODE'
+_TEXT	ENDS
+
+_FIXED_DATA	segment PUBLIC PARA 'FDATA'
+_FIXED_DATA	ENDS
+
+_BSS	segment PUBLIC WORD 'BSS'
+_BSS	ENDS
+
+_DATA	segment PUBLIC WORD 'DATA'
+_DATA	ENDS
+
+_DATAEND	segment PUBLIC BYTE 'DATA'
+_DATAEND	ENDS
+
 ;for WATCOM
-segment CONST		class(DATA) align=2
-segment CONST2		class(DATA) align=2
-;for MSC
-segment	DCONST      	class(DCONST) align=2
-segment	DYN_DATA        class(DYN_DATA)
-segment	HMA_TEXT_START	class(CODE) align=16
-segment	HMA_TEXT	class(CODE) exec
-segment HMA_TEXT_END	class(CODE) align=16
-segment INIT_TEXT_START class(CODE) align=16
-segment	INIT_TEXT	class(CODE) exec
-segment	INIT_TEXT_END   class(CODE) align=16
+CONST	segment PUBLIC WORD 'DATA'
+CONST	ENDS
 
-%ifdef WATCOM
-segment ID_B            class(FAR_DATA) align=16
-segment I_DATA          class(FAR_DATA) align=2
-segment ICONST          class(FAR_DATA) align=2
-segment ICONST2         class(FAR_DATA) align=2
-segment ID_E            class(FAR_DATA) align=2
-segment IB_B            class(FAR_DATA) align=2
-segment I_BSS           class(FAR_DATA) align=2
-segment IB_E            class(FAR_DATA) align=2
-%else
-segment ID_B            class(ID)  align=16
-segment ID              class(ID)  align=2
-segment IDATA           class(ID)  align=2
-segment ID_E            class(ID)  align=2
-segment	IC      	class(IC)  align=2
-segment	IB_B      	class(IB)  align=2 nobits
-segment	IB      	class(IB)  align=2 nobits
-segment	IB_E      	class(IB)  align=2 nobits
-%endif
+CONST2	segment PUBLIC WORD 'DATA'
+CONST2	ENDS
+
+;for MSC
+DCONST	segment	PUBLIC WORD 'DCONST'
+DCONST	ENDS
+
+DYN_DATA	segment	PUBLIC 'DYN_DATA'
+DYN_DATA	ENDS
+
+HMA_TEXT_START	segment	PUBLIC PARA 'CODE'
+HMA_TEXT_START	ENDS
+
+HMA_TEXT	segment	PUBLIC 'CODE'
+HMA_TEXT	ENDS
+
+HMA_TEXT_END	segment PUBLIC PARA 'CODE'
+HMA_TEXT_END	ENDS
+
+INIT_TEXT_START	segment PUBLIC PARA 'CODE'
+INIT_TEXT_START	ENDS
+
+INIT_TEXT	segment	PUBLIC 'CODE'
+INIT_TEXT	ENDS
+
+INIT_TEXT_END	segment	PUBLIC PARA 'CODE'
+INIT_TEXT_END	ENDS
+
+
+ID_B	segment PUBLIC PARA 'FAR_DATA'
+ID_B	ENDS
+
+I_DATA	segment PUBLIC WORD 'FAR_DATA'
+I_DATA	ENDS
+
+ICONST	segment PUBLIC WORD 'FAR_DATA'
+ICONST	ENDS
+
+ICONST2	segment PUBLIC WORD 'FAR_DATA'
+ICONST2	ENDS
+
+ID_E	segment PUBLIC WORD 'FAR_DATA'
+ID_E	ENDS
+
+IB_B	segment PUBLIC WORD 'FAR_DATA'
+IB_B	ENDS
+
+I_BSS	segment PUBLIC WORD 'FAR_DATA'
+I_BSS	ENDS
+
+IB_E	segment PUBLIC WORD 'FAR_DATA'
+IB_E	ENDS

@@ -27,10 +27,10 @@
 ; $Id: apisupt.asm 538 2003-03-12 22:43:53Z bartoldeman $
 ;
 
-		%include "segs.inc"
+		include segs.inc
 
-segment HMA_TEXT
-%if 0
+HMA_TEXT	segment 
+if 0
 
                 extern  _api_sp:wrt DGROUP      ; api stacks - for context
                 extern  _api_ss:wrt DGROUP      ; switching
@@ -127,4 +127,8 @@ _restore_stack:
                 popf
 
                 ret
-%endif
+endif
+
+HMA_TEXT	ends
+		end
+		

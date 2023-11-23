@@ -28,22 +28,23 @@
 ; $Header$
 ;
 
-        %include "../kernel/segs.inc"
+        include ../kernel/segs.inc
 
-segment	HMA_TEXT
+HMA_TEXT	segment	
 
 ;
 ;       ULONG ReadPCClock(void)
 ;
-                global  READPCCLOCK
+                public  READPCCLOCK
 READPCCLOCK:
                 mov     ah,0
                 int     1ah
-		extern  _DaysSinceEpoch   ;            ; update days if necessary
+		extern  _DaysSinceEpoch:near   ;            ; update days if necessary
 
 		; (ah is still 0, al contains midnight flag)
-                add     word [_DaysSinceEpoch  ],ax    ;   *some* BIOSes accumulate several days
-                adc     word [_DaysSinceEpoch+2],byte 0;
+		assume ds:DGROUP
+                add     word ptr [DGROUP:_DaysSinceEpoch  ],ax    ;   *some* BIOSes accumulate several days
+                adc     word ptr [DGROUP:_DaysSinceEpoch+2], 0;
 
 						; set return value dx:ax
 		xchg	ax,cx			; ax=_cx, cx=_ax
@@ -51,3 +52,6 @@ READPCCLOCK:
 
                 ret
 
+HMA_TEXT	ends
+		end
+		

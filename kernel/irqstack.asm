@@ -52,29 +52,35 @@
 ; that means that we need to redirect NMI (INT 2), irq 0, 1, 8, 13 without sharing
 ; irq 9 (==irq2) and irq 7 (printer) are not handled at all
 
-%include "segs.inc"
+	include segs.inc
 
-segment	_IRQTEXT
+_IRQTEXT	segment	
 
 stack_size      dw      0
 stack_top       dw      0
 stack_offs      dw      0
 stack_seg       dw      0
 
-%macro irq 0
+irq	macro 
                 call    general_irq_service
                 dd      0
-%endmacro
+	endm
 
-%macro irqshare 1
-                jmp     short %%1
+irqshare	macro rrf
+local rf
+                jmp     short rf
                 dd      0
                 dw      424bh
                 db      0
-                jmp     short retf%1
-                times 7 db 0
-%%1:            call    general_irq_service_share
-%endmacro
+if rrf eq 1
+                jmp     short retf1
+endif
+if rrf eq 2
+                jmp     short retf2
+endif
+                db 7 dup (0)
+rf:            call    general_irq_service_share
+		endm
 
 nmi:            irq
 irq_0:          irq
@@ -97,9 +103,11 @@ retf2:          retf
 
                 ; align to 100h to align _LOWTEXT for interrupt vectors
                 ; in kernel.asm
-                times (100h - ($ - stack_size)) db 0
+                db (100h - ($ - stack_size)) dup (0)
 
-segment _IO_TEXT
+_IRQTEXT	ends
+
+_IO_TEXT	segment 
 
 general_irq_service:
                 push    bx
@@ -111,7 +119,7 @@ general_irq_service_share:
                 push    bx
                 mov     bx, sp
                 mov     bx, [ss:bx+2]   ; return address->old ivec
-                sub     bx, byte irq_3 - irq_2 - 2
+                sub     bx, byte ptr irq_3 - irq_2 - 2
 common_irq:
                 push    dx
                 push    ax
@@ -137,7 +145,7 @@ common_irq:
                 sub     [stack_top], ax
 
                 pushf
-                call    far word [bx]
+                call    far ptr [bx]
 
                 cli
                 add     [stack_top], ax
@@ -152,21 +160,24 @@ return:         pop     ds              ; restore registers and return
                 pop     ax
                 pop     dx
                 pop     bx
-                add     sp, byte 2
+                add     sp, 2
                 iret
 
 dont_switch:    pushf
-                call    far word [bx]
+                call    far ptr [bx]
                 jmp     short return
 
+_IO_TEXT	ends
 
-segment	INIT_TEXT
+INIT_TEXT	segment	
 
-global  _init_stacks
+public  _init_stacks
 ; VOID    init_stacks(VOID FAR *stack_base, COUNT nStacks, WORD stackSize);
 
-int_numbers:            db 2,8,9,70h,75h
-int_numbers_share:      db 0ah,0bh,0ch,0dh,0eh,72h,73h,74h,76h,77h
+int_numbers:            
+			db 2,8,9,70h,75h
+int_numbers_share:      
+			db 0ah,0bh,0ch,0dh,0eh,72h,73h,74h,76h,77h
         
 _init_stacks:
                 push    bp
@@ -185,6 +196,7 @@ _init_stacks:
                 mov     ax, [bp+8]
                 mov     cx, [bp+0ah]
 
+		assume ds:_IRQTEXT
                 mov     [stack_size], cx
                 mov     [stack_offs], bx
                 mov     [stack_seg], dx
@@ -193,6 +205,7 @@ _init_stacks:
                 add     ax, bx
                 ; stack_top = stack_size * nStacks + stack_seg:stack_offs
                 mov     [stack_top], ax 
+		assume ds:nothing
 
                 xor     ax, ax
                 mov     ds, ax
@@ -244,3 +257,7 @@ set_vect:
                 loop    set_vect
 
                 ret
+
+INIT_TEXT	ends
+		end
+	

@@ -28,33 +28,33 @@
 ; $Header$
 ;
 
-    %include "segs.inc"
+    include segs.inc
 
 ;
 ;      Error Return Codes
 ;
 
-%define E_WRPRT         0       ; Write Protect
-%define E_UNIT          1       ; Unknown Unit
-%define E_NOTRDY        2       ; Device Not Ready
-%define E_CMD           3       ; Unknown Command
-%define E_CRC           4       ; Crc Error
-%define E_LENGTH        5       ; Bad Length
-%define E_SEEK          6       ; Seek Error
-%define E_MEDIA         7       ; Unknown MEDIA
-%define E_NOTFND        8       ; Sector Not Found
-%define E_PAPER         9       ; No Paper
-%define E_WRITE         10      ; Write Fault
-%define E_READ          11      ; Read Fault
-%define E_FAILURE       12      ; General Failure
+E_WRPRT       EQU 0       ; Write Protect
+E_UNIT        EQU 1       ; Unknown Unit
+E_NOTRDY      EQU 2       ; Device Not Ready
+E_CMD         EQU 3       ; Unknown Command
+E_CRC         EQU 4       ; Crc Error
+E_LENGTH      EQU 5       ; Bad Length
+E_SEEK        EQU 6       ; Seek Error
+E_MEDIA       EQU 7       ; Unknown MEDIA
+E_NOTFND      EQU 8       ; Sector Not Found
+E_PAPER       EQU 9       ; No Paper
+E_WRITE       EQU 10      ; Write Fault
+E_READ        EQU 11      ; Read Fault
+E_FAILURE     EQU 12      ; General Failure
 
 
-	extern	_IOExit
-	extern	_IOSuccess
-	extern	_IOErrorExit
-	extern	_IOErrCnt
-	extern	_IODone
-	extern	_IOCommandError
-	extern	GetUnitNum
-        extern  _ReqPktPtr
+	extern	_IOExit: near
+	extern	_IOSuccess: near
+	extern	_IOErrorExit: near
+	extern	_IOErrCnt: near
+	extern	_IODone: near
+	extern	_IOCommandError: near
+	extern	GetUnitNum: near
+        extern  _ReqPktPtr: near
 

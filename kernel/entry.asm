@@ -28,39 +28,39 @@
 ; $Id: entry.asm 1701 2012-01-16 22:06:21Z perditionc $
 ;
 
-                %include "segs.inc"
-                %include "stacks.inc"
+                include segs.inc
+                include stacks.inc
 
-segment HMA_TEXT
-                extern   _int21_syscall
-                extern   _int21_service
-                extern   _int2526_handler
-                extern   _error_tos
-                extern   _char_api_tos
-                extern   _disk_api_tos
-                extern   _user_r
-                extern   _ErrorMode
-                extern   _InDOS
-%IFDEF WIN31SUPPORT
-                extern   _winInstanced
-%ENDIF ; WIN31SUPPORT
-                extern   _cu_psp
-                extern   _MachineId
-                extern   critical_sp
+HMA_TEXT segment 
+                extern   _int21_syscall: near
+                extern   _int21_service: near
+                extern   _int2526_handler: near
+                extern   _error_tos: near
+                extern   _char_api_tos: near
+                extern   _disk_api_tos: near
+                extern   _user_r: near
+                extern   _ErrorMode: near
+                extern   _InDOS: near
+IFDEF WIN31SUPPORT
+                extern   _winInstanced: near
+ENDIF ; WIN31SUPPORT
+                extern   _cu_psp: near
+                extern   _MachineId: near
+                extern   critical_sp: near
 
-                extern   int21regs_seg
-                extern   int21regs_off
+                extern   int21regs_seg: near
+                extern   int21regs_off: near
 
-                extern   _Int21AX
+                extern   _Int21AX: near
 
-                extern  _DGROUP_
+                extern  _DGROUP_: near
 
-                global  reloc_call_cpm_entry
-                global  reloc_call_int20_handler
-                global  reloc_call_int21_handler
-                global  reloc_call_low_int25_handler
-                global  reloc_call_low_int26_handler
-                global  reloc_call_int27_handler
+                public  reloc_call_cpm_entry
+                public  reloc_call_int20_handler
+                public  reloc_call_int21_handler
+                public  reloc_call_low_int25_handler
+                public  reloc_call_low_int26_handler
+                public  reloc_call_int27_handler
 
 ;
 ; MS-DOS CP/M style entry point
@@ -86,7 +86,7 @@ reloc_call_cpm_entry:
                 ;       psp seg
                 ;       000ah
                 ;
-                add     sp, byte 2      ; remove unneeded far return offset 0ah
+                add     sp, 2      ; remove unneeded far return offset 0ah
                 pushf                   ; start setting up int 21h stack
                 ;
                 ; now stack is
@@ -148,10 +148,10 @@ hex_loop:
 
 divide_by_zero_message db 0dh,0ah,'Interrupt divide by zero, stack:',0dh,0ah,0
 
-                global reloc_call_int0_handler
+                public reloc_call_int0_handler
 reloc_call_int0_handler:
                 
-                mov si,divide_by_zero_message
+                mov si, offset divide_by_zero_message
 
 zero_message_loop:
                 mov al, [cs:si]
@@ -176,7 +176,7 @@ stack_loop:
                 int 10h
                 inc si
                 inc si
-                cmp si, byte 13*2
+                cmp si, 13*2
                 jb stack_loop
                 mov al, 0dh
                 int 10h
@@ -191,13 +191,13 @@ thats_it:       hlt
 
 invalid_opcode_message db 0dh,0ah,'Invalid Opcode at ',0
 
-                global reloc_call_int6_handler
+                public reloc_call_int6_handler
 reloc_call_int6_handler:
 
-                mov si,invalid_opcode_message
+                mov si, offset invalid_opcode_message
                 jmp short zero_message_loop        
 
-                global reloc_call_int19_handler
+                public reloc_call_int19_handler
 reloc_call_int19_handler:
 ; from Japheth's public domain code (JEMFBHLP.ASM)
 ; restores int 10,13,15,19,1b and then calls the original int 19.
@@ -211,12 +211,12 @@ reloc_call_int19_handler:
                 cli
 nextitem:       lodsb
                 mov di,ax
-%if XCPU >= 186
-                shl di,2
-%else
+;%if XCPU >= 186
+;                shl di,2
+;%else
                 shl di,1
                 shl di,1
-%endif
+;%endif
                 movsw
                 movsw
                 loop nextitem
@@ -256,7 +256,7 @@ reloc_call_int21_handler:
                 ; with compiler interrupt stack frames.
                 ;
                 sti
-                PUSH$ALL
+                PUSH_ALL
                 mov bp,sp
                 ;
                 ; Create kernel reference frame.
@@ -331,8 +331,8 @@ int21_1:
                 ;
                 ; I don't know who needs that, but ... (TE)
                 ;
-                mov     word [_user_r+2],ss
-                mov     word [_user_r],bp                         ; store and init
+                mov     word ptr [_user_r+2],ss
+                mov     word ptr [_user_r],bp                         ; store and init
 
                 ;
                 ; Decide which stack to run on.
@@ -348,7 +348,7 @@ int21_1:
                 ; call number.  Finally, all others run on the disk stack.
                 ; They are evaluated in that order.
 
-                cmp     byte [_ErrorMode],0
+                cmp     byte ptr [_ErrorMode],0
                 je      int21_2
 
 int21_onerrorstack:                
@@ -373,7 +373,7 @@ int21_2:
                         ; mark the whole int21 api as critical
                 call begin_dos_crit_sect
 %ENDIF ; WIN31SUPPORT
-                inc     byte [_InDOS]
+                inc     byte ptr [_InDOS]
                 mov     cx,_char_api_tos
                 or      ah,ah   
                 jz      int21_3
@@ -406,7 +406,7 @@ int21_normalentry:
                 push    bp
                 call    _int21_service
 
-int21_exit:     dec     byte [_InDOS]
+int21_exit:     dec     byte ptr [_InDOS]
 %IFDEF WIN31SUPPORT
                 call    end_dos_crit_sect  ; release all critical sections
 %if 0
@@ -427,7 +427,7 @@ int21_exit_nodec:
                 pop bp      ; get back user stack
                 pop si
 
-                global  _int21_iret
+                public  _int21_iret
 _int21_iret:
                 cli
                 mov     ss,si
@@ -435,7 +435,7 @@ _int21_iret:
 
 int21_ret:
                 Restore386Registers
-                POP$ALL
+                POP_ALL
 
                 ;
                 ; ... and return.
@@ -463,7 +463,7 @@ skip_crit_sect:
 ;
 ;
 end_dos_crit_sect:
-                mov     [_Int21AX],ax       ; needed!
+                mov     word ptr [_Int21AX],ax       ; needed!
                 push    ax                  ; This must be here!!!
                 mov     ah,82h              ; re-enrty sake before disk stack
                 int     2ah                 ; Calling Server Hook!
@@ -480,7 +480,7 @@ reloc_call_int27_handler:
                 ;
                 ; First convert the memory to paragraphs
                 ;
-                add     dx,byte 0fh     ; round up
+                add     dx, 0fh     ; round up
                 rcr     dx,1
                 shr     dx,1
                 shr     dx,1
@@ -538,7 +538,7 @@ int2526:
                 push    cx
                 push    ax                      ; was set on entry = 25,26
                 call    _int2526_handler
-                add     sp, byte 6
+                add     sp, 6
 
                 pop     cx
                 pop     dx                      ; restore user stack
@@ -586,12 +586,12 @@ PSP_USERSS      equ     30h
 ; COUNT
 ; CriticalError(COUNT nFlag, COUNT nDrive, COUNT nError, struct dhdr FAR *lpDevice);
 ;
-                global  _CriticalError
+                public  _CriticalError
 _CriticalError:
                 ;
                 ; Skip critical error routine if handler is active
                 ;
-                cmp     byte [_ErrorMode],0
+                cmp     byte ptr [_ErrorMode],0
                 je      CritErr05               ; Jump if equal
 
                 mov     ax,FAIL
@@ -610,33 +610,33 @@ CritErr05:
                 ;
                 ; Get parameters
                 ;
-                mov     ah,byte [bp+4]      ; nFlags
-                mov     al,byte [bp+6]      ; nDrive
-                mov     di,word [bp+8]      ; nError
+                mov     ah, [bp+4]      ; nFlags
+                mov     al, [bp+6]      ; nDrive
+                mov     di, [bp+8]      ; nError
                 ;
                 ;       make cx:si point to dev header
                 ;       after registers restored use bp:si
                 ;
-                mov     si,word [bp+10]     ; lpDevice Offset
-                mov     cx,word [bp+12]     ; lpDevice segment
+                mov     si, [bp+10]     ; lpDevice Offset
+                mov     cx, [bp+12]     ; lpDevice segment
                 ;
                 ; Now save real ss:sp and retry info in internal stack
                 ;
                 cli
-                mov     es,[_cu_psp]
-                push    word [es:PSP_USERSS]
-                push    word [es:PSP_USERSP]
-                push    word [_MachineId]
-                push    word [int21regs_seg]
-                push    word [int21regs_off]
-                push    word [_user_r+2]
-                push    word [_user_r]
-                mov     [critical_sp],sp
+                mov     es,word ptr [_cu_psp]
+                push    word ptr [es:PSP_USERSS]
+                push    word ptr [es:PSP_USERSP]
+                push    word ptr [_MachineId]
+                push    word ptr [int21regs_seg]
+                push    word ptr [int21regs_off]
+                push    word ptr [_user_r+2]
+                push    word ptr [_user_r]
+                mov     word ptr [critical_sp],sp
                 ;
                 ; do some clean up because user may never return
                 ;
-                inc     byte [_ErrorMode]
-                dec     byte [_InDOS]
+                inc     byte ptr [_ErrorMode]
+                dec     byte ptr [_InDOS]
                 ;
                 ; switch to user's stack
                 ;
@@ -659,22 +659,22 @@ CritErr05:
                 mov     ds,bp
                 mov     ss,bp
                 mov     sp,[critical_sp]
-                pop     word [_user_r]
-                pop     word [_user_r+2]
-                pop     word [int21regs_off]
-                pop     word [int21regs_seg]
-                pop     word [_MachineId]
-                mov     es,[_cu_psp]
-                pop     word [es:PSP_USERSP]
-                pop     word [es:PSP_USERSS]
+                pop     word ptr [_user_r]
+                pop     word ptr [_user_r+2]
+                pop     word ptr [int21regs_off]
+                pop     word ptr [int21regs_seg]
+                pop     word ptr [_MachineId]
+                mov     es, word ptr [_cu_psp]
+                pop     word ptr [es:PSP_USERSP]
+                pop     word ptr [es:PSP_USERSS]
                 mov     bp, sp
-                mov     ah, byte [bp+4+4]       ; restore old AH from nFlags
+                mov     ah, byte ptr [bp+4+4]       ; restore old AH from nFlags
                 sti                             ; Enable interrupts
                 ;
                 ; clear flags
                 ;
-                mov     byte [_ErrorMode],0
-                inc     byte [_InDOS]
+                mov     byte ptr [_ErrorMode],0
+                inc     byte ptr [_InDOS]
                 ;
                 ; Check for ignore and force fail if not ok
                 cmp     al,CONTINUE
@@ -726,12 +726,16 @@ CritErrAbort:
                 mov     al,FAIL
                 jz      CritErrExit
                 cli
-                mov     bp,word [_user_r+2]   ;Get frame
+                mov     bp,word ptr [_user_r+2]   ;Get frame
                 mov     ss,bp
-                mov     bp,word [_user_r]
+                mov     bp,word ptr [_user_r]
                 mov     sp,bp
-                mov     byte [_ErrorMode],1        ; flag abort
+                mov     byte ptr [_ErrorMode],1        ; flag abort
                 mov     ax,4C00h
                 mov     [bp+reg_ax],ax
                 sti
                 jmp     int21_reentry              ; restart the system call
+
+HMA_TEXT	ENDS
+		end
+		

@@ -28,10 +28,10 @@
 ; $Header$
 ;
 
-                %include "../kernel/segs.inc"
-                %include "../hdr/stacks.inc"
+                include ../kernel/segs.inc
+                include ../hdr/stacks.inc
 
-segment	HMA_TEXT
+HMA_TEXT	segment	
 
 ;
 ;       VOID WriteATClock(bcdDays, bcdHours, bcdMinutes, bcdSeconds)
@@ -40,7 +40,7 @@ segment	HMA_TEXT
 ;       BYTE bcdMinutes;
 ;       BYTE bcdSeconds;
 ;
-                global  WRITEATCLOCK
+                public  WRITEATCLOCK
 WRITEATCLOCK:
                 push    bp
                 mov     bp,sp
@@ -48,18 +48,20 @@ WRITEATCLOCK:
 ;               bcdMinutes = 6
 ;               bcdHours = 8
 ;               bcdDays = 10
-arg bcdDays, bcdHours, bcdMinutes, bcdSeconds
-                mov     ch,byte [.bcdHours]
-                mov     cl,byte [.bcdMinutes]
-                mov     dh,byte [.bcdSeconds]
+;arg bcdDays, bcdHours, bcdMinutes, bcdSeconds
+                mov     ch,byte ptr [bp+8]
+                mov     cl,byte ptr [bp+6]
+                mov     dh,byte ptr [bp+4]
                 mov     dl,0
                 mov     ah,3
                 int     1ah
-                mov     bx,word [.bcdDays]
-                mov     dx,word [bx]
-                mov     cx,word [bx+2]
+                mov     bx,word ptr [bp+10]
+                mov     dx,word ptr [bx]
+                mov     cx,word ptr [bx+2]
                 mov     ah,5
                 int     1ah
                 pop     bp
                 ret     8
 
+HMA_TEXT	ends
+		end

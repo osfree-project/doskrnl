@@ -86,7 +86,7 @@ reg_flags equ 22
 irp_low   equ 24
 irp_hi    equ 26
 
-%macro  PUSH$ALL  0
+PUSH_ALL	macro
                 push    es
                 push    ds
                 push    bp
@@ -96,9 +96,9 @@ irp_hi    equ 26
                 push    cx
                 push    bx
                 push    ax
-%endmacro
+		endm
 
-%macro  POP$ALL   0
+POP_ALL		macro
                 pop     ax
                 pop     bx
                 pop     cx
@@ -108,7 +108,7 @@ irp_hi    equ 26
                 pop     bp
                 pop     ds
                 pop     es
-%endmacro
+		endm
 
 ; I386.inc - 10/25/01 by tom ehlert
 ;
@@ -129,73 +129,36 @@ irp_hi    equ 26
 ;
 
 
-%IF XCPU < 386
+IF @CPU AND 00001000B				; 386+
+Protect386Registers	macro
+		push fs
+		push gs
+	endm
+
+RestoreSP	macro  
+		lea sp, [bp-4]
+		endm
+
+Restore386Registers	macro  
+		pop gs
+		pop fs
+	endm
+
+ELSE           
 	; no need to save/restore  anything
 
 ;	error 1 2 3
-	%macro  Protect386Registers 0
-	%endmacro
+Protect386Registers	macro  
+	endm
 	
-	%macro  RestoreSP 0
+RestoreSP	macro  
 		mov sp, bp  
-	%endmacro
+	endm
 
-	%macro  Restore386Registers 0
-	%endmacro
+Restore386Registers	macro  
+	endm
 
-%ELSE           
-	%ifdef WATCOM
-
-	%macro  Protect386Registers  0
-		push fs
-		push gs
-	%endmacro
-
-	%macro  RestoreSP 0
-		lea sp, [bp-4]
-	%endmacro
-
-	%macro  Restore386Registers  0
-		pop gs
-		pop fs
-	%endmacro
-
-	%else
-
-	%macro  Protect386Registers  0
-		push eax
-		pop ax
-        %ifdef MSCL8
-		push ecx
-		pop cx
-        %else ;BC5
-		push ebx
-		pop bx
-        %endif
-		push edx
-		pop dx
-	%endmacro
-
-	%macro  RestoreSP 0
-		lea sp, [bp-6]
-	%endmacro
-
-	%macro  Restore386Registers  0
-		push dx
-		pop edx
-        %ifdef MSCL8
-		push cx
-		pop ecx
-        %else ;BC5
-		push bx
-		pop ebx
-        %endif
-		push ax
-		pop eax
-	%endmacro
-
-	%endif
-%ENDIF
+ENDIF
 
 ; macros to define stack arguments
 ; arg a, {b,4}, c
@@ -208,45 +171,50 @@ irp_hi    equ 26
 ; the high word. The caller is responsible for dealing with instruction
 ; pointer (ip) on the stack.
 
-%ifdef gcc
-%define STDCALL
-%else
-%define PASCAL
-%endif
-
-%macro  definearg 1-2 2
+if 0
+definearg macro   1-2 2
 	%xdefine .%1 bp+.argloc
 	%assign .argloc .argloc+%2
-%endmacro
+	endm
 
 %macro  arg 1-*
 	%assign .argloc 4
 	%rep  %0
-		%ifdef PASCAL
-			%rotate -1
-		%endif
-		definearg %1
-		%ifdef STDCALL
-			%rotate 1
-		%endif
-	%endrep
-%endmacro
-
-%macro  multipop 1-*
-	%rep %0
 		%rotate -1
-		pop %1
+		definearg %1
 	%endrep
 %endmacro
+endif
 
-%macro  popargs 1-*
-	%rep  %0
-		%ifdef PASCAL
-			%rotate -1
-		%endif
-		multipop %1
-		%ifdef STDCALL
-			%rotate 1
-		%endif
-	%endrep
-%endmacro
+@ArgRev MACRO arglist:REQ
+        LOCAL txt, arg
+        txt TEXTEQU <>
+%   FOR arg, <arglist>
+            txt CATSTR <arg>, <,>, txt      ;; Paste each onto list
+        ENDM
+                                            ;; Remove terminating comma
+        txt SUBSTR  txt, 1, @SizeStr( %txt ) - 1
+        txt CATSTR  <!<>, txt, <!>>         ;; Add angle brackets
+        EXITM txt
+ENDM
+
+
+popargs    MACRO   args:VARARG
+%   FOR  arg, @ArgRev( <args> )   ;; Process in reverse order
+            pop    arg
+        ENDM
+    ENDM    
+
+definearg macro   arg
+arg equ bp+argloc
+argloc = argloc+2
+	endm
+
+;argloc equ 0
+
+arg    MACRO   args:VARARG
+argloc	= 4
+%   FOR  arg, @ArgRev( <args> )   ;; Process in reverse order
+		definearg arg
+        ENDM
+    ENDM    

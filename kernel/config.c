@@ -62,8 +62,10 @@ STATIC struct MenuSelector MenuStruct[MENULINESMAX] BSS_INIT({0});
 
 int nMenuLine BSS_INIT(0);
 int MenuColor = -1;
+#if 0
 extern char kernel_command_line[256];
 extern int kernel_command_line_length;
+#endif
 
 STATIC void WriteMenuLine(struct MenuSelector *menu)
 {
@@ -801,6 +803,7 @@ copy_char:
 #endif
 
 
+#if 0
 static unsigned check_config_commandline(char ** pointer, char * cc,
 	char const * commandbuffer, char const * command);
 static unsigned check_config_commandline(char ** pointer, char * cc,
@@ -819,6 +822,7 @@ static unsigned check_config_commandline(char ** pointer, char * cc,
   }
   return 0;
 }
+#endif
 
 
 VOID DoConfig(int nPass)
@@ -859,6 +863,8 @@ VOID DoConfig(int nPass)
 #endif
   }
 
+	#if 0
+
   {
     char * pp = kernel_command_line;
     char * cc;
@@ -884,7 +890,7 @@ VOID DoConfig(int nPass)
           cc, commandbuffer, configcommands[ii].command))
           break;
     }
-
+	
     /* Check to see if we have a config.sys file.  If not, just     */
     /* exit since we don't force the user to have one (but 1st      */
     /* also process MEMDISK passed config options if present).      */
@@ -909,6 +915,7 @@ VOID DoConfig(int nPass)
         return;
     }
   }
+	#endif
 
   nCfgLine = 0;  /* keep track of which line in file for errors   */
 

@@ -27,23 +27,27 @@
 ;
 ; $Header$
 ;
-        %include "../kernel/segs.inc"
-        %include "../hdr/stacks.inc"
+        include ../kernel/segs.inc
+        include ../hdr/stacks.inc
 
-segment HMA_TEXT
+HMA_TEXT	segment 
 
 
 ;
 ;       VOID WritePCClock(Ticks)
 ;       ULONG Ticks;
 ;
-                global  WRITEPCCLOCK
+                public  WRITEPCCLOCK
 WRITEPCCLOCK:
 ;               Ticks = 4
 		pop	ax			; return address
-		popargs {cx,dx}			; Ticks
+		;popargs {cx,dx}			; Ticks
+		pop	dx
+		pop	cx
 		push	ax			; restore stack
                 mov     ah,1
                 int     1ah
                 ret
 
+HMA_TEXT	ends
+		end

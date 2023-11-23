@@ -6,10 +6,10 @@
 ;; ==> Assuming that data of tables remains constant all the time
 ;; ==> Reordering tables 1, 2, 4 and 5
 
-	%include "segs.inc"
-segment CONST2
+	include segs.inc
+CONST2	segment 
 
-	GLOBAL _nlsPackageHardcoded
+	public _nlsPackageHardcoded
 _nlsPackageHardcoded:
 	DB  000h, 000h, 000h, 000h, 001h, 000h, 0b5h, 001h
 	DB  00fh, 000h, 059h, 000h, 04eh, 000h, 006h, 000h
@@ -23,21 +23,21 @@ _nlsPackageHardcoded:
 	DW ?table6, DGROUP
 	DB  007h
 	DW ?table7, DGROUP
-	GLOBAL _nlsCountryInfoHardcoded
+	public _nlsCountryInfoHardcoded
 _nlsCountryInfoHardcoded:
 	DB  001h
-	GLOBAL _nlsCntryInfoHardcoded
+	public _nlsCntryInfoHardcoded
 _nlsCntryInfoHardcoded:
 ?table1:
 	DB  01ch, 000h, 001h, 000h, 0b5h, 001h, 000h, 000h
 	DB  024h, 000h, 000h, 000h, 000h, 02ch, 000h, 02eh
 	DB  000h, 02dh, 000h, 03ah, 000h, 000h, 002h, 000h
-extern _CharMapSrvc
+extern _CharMapSrvc: near
         DW  _CharMapSrvc, DGROUP
         DB  02ch, 000h
-	GLOBAL _hcTablesStart
+	public _hcTablesStart
 _hcTablesStart:
-	GLOBAL _nlsUpcaseHardcoded
+	public _nlsUpcaseHardcoded
 _nlsUpcaseHardcoded:
 ?table2:
 	DB  080h, 000h, 080h, 09ah, 045h, 041h, 08eh, 041h
@@ -57,7 +57,7 @@ _nlsUpcaseHardcoded:
 	DB  0eeh, 0efh, 0f0h, 0f1h, 0f2h, 0f3h, 0f4h, 0f5h
 	DB  0f6h, 0f7h, 0f8h, 0f9h, 0fah, 0fbh, 0fch, 0fdh
 	DB  0feh, 0ffh
-	GLOBAL _nlsFUpcaseHardcoded
+	public _nlsFUpcaseHardcoded
 _nlsFUpcaseHardcoded:
 ?table4:
 	DB  080h, 000h, 080h, 09ah, 045h, 041h, 08eh, 041h
@@ -77,13 +77,13 @@ _nlsFUpcaseHardcoded:
 	DB  0eeh, 0efh, 0f0h, 0f1h, 0f2h, 0f3h, 0f4h, 0f5h
 	DB  0f6h, 0f7h, 0f8h, 0f9h, 0fah, 0fbh, 0fch, 0fdh
 	DB  0feh, 0ffh
-	GLOBAL _nlsFnameTermHardcoded
+	public _nlsFnameTermHardcoded
 _nlsFnameTermHardcoded:
 ?table5:
 	DB  016h, 000h, 08eh, 000h, 0ffh, 041h, 000h, 020h
 	DB  0eeh, 00eh, 02eh, 022h, 02fh, 05ch, 05bh, 05dh
 	DB  03ah, 07ch, 03ch, 03eh, 02bh, 03dh, 03bh, 02ch
-	GLOBAL _nlsCollHardcoded
+	public _nlsCollHardcoded
 _nlsCollHardcoded:
 ?table6:
 	DB  000h, 001h, 000h, 001h, 002h, 003h, 004h, 005h
@@ -119,10 +119,13 @@ _nlsCollHardcoded:
 	DB  0eeh, 0efh, 0f0h, 0f1h, 0f2h, 0f3h, 0f4h, 0f5h
 	DB  0f6h, 0f7h, 0f8h, 0f9h, 0fah, 0fbh, 0fch, 0fdh
 	DB  0feh, 0ffh
-	GLOBAL _nlsDBCSHardcoded
+	public _nlsDBCSHardcoded
 _nlsDBCSHardcoded:
 ?table7:
 	DB  000h, 000h, 000h, 000h, 000h, 000h, 000h, 000h
 	DB  000h, 000h
-	GLOBAL _hcTablesEnd
+	public _hcTablesEnd
 _hcTablesEnd:
+
+CONST2	ends
+	end

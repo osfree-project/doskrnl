@@ -26,30 +26,30 @@
 ; Cambridge, MA 02139, USA.
 ;
 ;
-        %include "segs.inc"
+        include segs.inc
 
 PSP_USERSP      equ     2eh
 PSP_USERSS      equ     30h
 
-segment HMA_TEXT
+HMA_TEXT	segment 
 
-                global  _DosIdle_int
-                global  _DosIdle_hlt
+                public  _DosIdle_int
+                public  _DosIdle_hlt
 
-                extern   _InDOS
-                extern   _cu_psp
-                extern   _MachineId
-                extern   critical_sp
-                extern   _user_r
+                extern   _InDOS: near
+                extern   _cu_psp: near
+                extern   _MachineId: near
+                extern   critical_sp: near
+                extern   _user_r: near
 		; variables as the following are "part of" module inthndlr.c
 		; because of the define MAIN before include globals.h there!
-                extern   _HaltCpuWhileIdle
-                extern   _DGROUP_
+                extern   _HaltCpuWhileIdle: near
+                extern   _DGROUP_: near
 ;
 _DosIdle_hlt:
                 push    ds
-                mov     ds, [cs:_DGROUP_]
-                cmp     byte [_HaltCpuWhileIdle],1
+                mov     ds, word ptr [cs:_DGROUP_]
+                cmp     byte ptr [_HaltCpuWhileIdle],1
                 jb      DosId0
                 pushf
                 sti
@@ -61,8 +61,8 @@ DosId0:         pop     ds
 _DosIdle_int:
                 call    _DosIdle_hlt
                 push    ds
-                mov     ds, [cs:_DGROUP_]
-                cmp     byte [_InDOS],1
+                mov     ds, word ptr [cs:_DGROUP_]
+                cmp     byte ptr [_InDOS],1
                 ja      DosId1
                 call    Do_DosI
 DosId1:
@@ -72,21 +72,21 @@ DosId1:
 Do_DosI:
                 push    ax
                 push    es
-                push    word [_MachineId]
-                push    word [_user_r]
-                push    word [_user_r+2]
-                mov     es,word [_cu_psp]
-                push    word [es:PSP_USERSS]
-                push    word [es:PSP_USERSP]
+                push    word ptr [_MachineId]
+                push    word ptr [_user_r]
+                push    word ptr [_user_r+2]
+                mov     es,word ptr [_cu_psp]
+                push    word ptr [es:PSP_USERSS]
+                push    word ptr [es:PSP_USERSP]
 
                 int     28h
 
-                mov     es,word [_cu_psp]
-                pop     word [es:PSP_USERSP]
-                pop     word [es:PSP_USERSS]
-                pop     word [_user_r+2]
-                pop     word [_user_r]
-                pop     word [_MachineId]
+                mov     es,word ptr [_cu_psp]
+                pop     word ptr [es:PSP_USERSP]
+                pop     word ptr [es:PSP_USERSS]
+                pop     word ptr [_user_r+2]
+                pop     word ptr [_user_r]
+                pop     word ptr [_MachineId]
                 pop     es
                 pop     ax
                 ret
@@ -94,3 +94,6 @@ Do_DosI:
 ; segment _DATA		; belongs to DGROUP
 ; whatever	db whatever
 
+HMA_TEXT	ends
+		end
+		

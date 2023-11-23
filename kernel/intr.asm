@@ -25,107 +25,103 @@
 ; 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA.
 ;
 
-		%include "segs.inc"
-		%include "stacks.inc"
+		include segs.inc
+		include stacks.inc
 
-%macro INTR 1
-        
+INTR	macro siz
+local intr_2        
+local intr_1
                 push    bp                      ; Standard C entry
                 mov     bp,sp
                 push    si
                 push    di
-%ifdef WATCOM
                 push    bx
                 push    cx
                 push    dx
                 push    es
-%endif
                 push	ds
 				pushf
 
-arg nr, {rp,%1}
-                mov	ax, [.nr]		; interrupt number
-                mov	[cs:%%intr_1-1], al
-                jmp 	short %%intr_2		; flush the instruction cache
-%%intr_2:
-%if %1 == 4
-		lds	bx, [.rp]		; regpack structure FAR
-%else
-		mov	bx, [.rp]		; regpack structure
-%endif
+		;arg nr, {rp,%1}
+if siz eq 4
+                mov	ax, word ptr [bp+8]		; interrupt number
+else
+                mov	ax, word ptr [bp+6]		; interrupt number
+endif
+                mov	byte ptr [cs:intr_1-1], al
+                jmp 	short intr_2		; flush the instruction cache
+intr_2:
+if siz eq 4
+		lds	bx, dword ptr [bp+4]		; regpack structure FAR
+else
+		mov	bx, word ptr [bp+4]		; regpack structure
+endif
 		mov	ax, [bx]
 		mov	cx, [bx+4]
 		mov	dx, [bx+6]
 		mov	si, [bx+8]
 		mov	di, [bx+10]
 		mov	bp, [bx+12]
-		push	word [bx+14]		; ds
-		mov	es, [bx+16]
-		push word [bx+22]			; flags
+		push	word ptr [bx+14]		; ds
+		mov	es, word ptr [bx+16]
+		push word ptr [bx+22]			; flags
 		popf
 		mov	bx, [bx+2]
 		pop	ds
 		int	0
-%%intr_1:
+intr_1:
 
 		pushf
 		push	ds
 		push	bx
 		mov	bx, sp
-%if %1 == 4
-%ifdef WATCOM
-		lds bx, [ss:bx+(14+8)+4]		; FAR address of REGPACK, pascal convention
-%else
-		lds bx, [ss:bx+14+.rp-bp]	; FAR address of REGPACK, SP=BX + skip saved registers (14) + 
-%endif
-%else
+if siz eq 4
+		lds bx, dword ptr [ss:bx+(14+8)+4]		; FAR address of REGPACK, pascal convention
+else
 		mov	ds, [ss:bx+8]
-%ifdef WATCOM
 		mov	bx, [ss:bx+26]			; NEAR address of REGPACK, pascal convention
-%else
-		mov	bx, [ss:bx+14+.rp-bp]	; NEAR address of REGPACK
-%endif
-%endif
+endif
 		mov	[bx], ax
-		pop	word [bx+2]				; bx
+		pop	word ptr [bx+2]				; bx
 		mov	[bx+4], cx
 		mov	[bx+6], dx
 		mov	[bx+8], si
 		mov	[bx+10], di
 		mov	[bx+12], bp
-		pop	word [bx+14]			; ds
+		pop	word ptr [bx+14]			; ds
 		mov	[bx+16], es
-		pop	word [bx+22]			; flags
+		pop	word ptr [bx+22]			; flags
 
 		; restore all registers to values from INTR entry
 		popf
 		pop	ds
-%ifdef WATCOM
                 pop     es
                 pop     dx
                 pop     cx
                 pop     bx
-%endif
 		pop	di
 		pop	si
 		pop	bp
-%endmacro
+	endm
 
-segment	HMA_TEXT
+HMA_TEXT	segment	
 
 ;
 ;       void ASMPASCAL call_intr(WORD nr, struct REGPACK FAR *rp)
 ;
-		global	CALL_INTR
+		public	CALL_INTR
 CALL_INTR:
 		INTR 4 ; rp is far, DWORD argument
 		ret 6
 
 ;; COUNT ASMPASCAL res_DosExec(COUNT mode, exec_blk * ep, BYTE * lp)
-    global RES_DOSEXEC
+    public RES_DOSEXEC
 RES_DOSEXEC:
         pop es                  ; ret address
-        popargs ax,bx,dx        ; mode, exec block, filename
+        ;popargs ax,bx,dx        ; mode, exec block, filename
+	pop	dx
+	pop	bx
+	pop	ax
         push es                 ; ret address
         mov ah, 4bh
         push ds                 
@@ -137,10 +133,13 @@ no_exec_error:
         ret
 
 ;; UCOUNT ASMPASCAL res_read(int fd, void *buf, UCOUNT count); 
-    global RES_READ
+    public RES_READ
 RES_READ:
         pop ax         ; ret address
-        popargs bx,dx,cx ; fd, buf, count
+        ;popargs bx,dx,cx ; fd, buf, count
+	pop	cx
+	pop	dx
+	pop	bx
         push ax        ; ret address
         mov ah, 3fh
         int 21h
@@ -149,13 +148,15 @@ RES_READ:
 no_read_error:
         ret
 
-segment	INIT_TEXT
+HMA_TEXT	ends
+
+INIT_TEXT	segment	
 ;
 ;       void init_call_intr(nr, rp)
 ;       REG int nr
 ;       REG struct REGPACK *rp
 ;
-		global	INIT_CALL_INTR
+		public	INIT_CALL_INTR
 INIT_CALL_INTR:
 		INTR 2	; rp is near, WORD argument
 		ret 4
@@ -165,10 +166,14 @@ INIT_CALL_INTR:
 ;
 ; this calls HIMEM.SYS 
 ;
-                global INIT_CALL_XMSCALL
+                public INIT_CALL_XMSCALL
 INIT_CALL_XMSCALL:
             pop  bx         ; ret address
-            popargs {es,cx},ax,dx
+            ;popargs {es,cx},ax,dx
+	    pop	dx
+	    pop	ax
+	    pop	cx
+	    pop	es
 
             push cs         ; ret address
             push bx
@@ -177,7 +182,7 @@ INIT_CALL_XMSCALL:
             retf
             
 ; void FAR *DetectXMSDriver(VOID)
-global DETECTXMSDRIVER
+public DETECTXMSDRIVER
 DETECTXMSDRIVER:
         mov ax, 4300h
         int 2fh                 ; XMS installation check
@@ -200,18 +205,20 @@ detected:
         pop es
         ret        
 
-global KEYCHECK
+public KEYCHECK
 KEYCHECK:
         mov ah, 1
         int 16h
         ret                
 
 ;; int open(const char *pathname, int flags); 
-    global INIT_DOSOPEN
+    public INIT_DOSOPEN
 INIT_DOSOPEN: 
         ;; init calling DOS through ints:
         pop bx         ; ret address
-        popargs dx,ax  ; pathname, flags
+        ;popargs dx,ax  ; pathname, flags
+	pop	ax
+	pop	dx
         push bx        ; ret address
         mov ah, 3dh
         ;; AX will have the file handle
@@ -224,7 +231,7 @@ common_no_error:
         ret
 
 ;; int close(int fd);
-    global CLOSE
+    public CLOSE
 CLOSE:         
         pop ax         ; ret address
         pop bx         ; fd
@@ -233,19 +240,24 @@ CLOSE:
         jmp short common_int21
 
 ;; UCOUNT read(int fd, void *buf, UCOUNT count); 
-    global READ
+    public READ
 READ: 
         pop ax         ; ret address
-        popargs bx,dx,cx ; fd,buf,count
+        ;popargs bx,dx,cx ; fd,buf,count
+	pop	cx
+	pop	dx
+	pop	bx
         push ax        ; ret address
         mov ah, 3fh
         jmp short common_int21
 
 ;; int dup2(int oldfd, int newfd); 
-    global DUP2
+    public DUP2
 DUP2:
         pop ax         ; ret address
-        popargs bx,cx  ; oldfd,newfd
+        ;popargs bx,cx  ; oldfd,newfd
+	pop	cx
+	pop	bx
         push ax        ; ret address
         mov ah, 46h
         jmp short common_int21
@@ -253,10 +265,13 @@ DUP2:
 ;
 ; ULONG ASMPASCAL lseek(int fd, long position);
 ;
-    global LSEEK
+    public LSEEK
 LSEEK:
         pop ax         ; ret address
-        popargs bx,{cx,dx} ; fd, position high:low
+        ;popargs bx,{cx,dx} ; fd, position high:low
+	pop	dx
+	pop	cx
+	pop	bx
         push ax        ; ret address
         mov ax,4200h   ; origin: start of file
         int 21h
@@ -267,7 +282,7 @@ seek_ret:
         ret
         
 ;; VOID init_PSPSet(seg psp_seg)
-    global INIT_PSPSET
+    public INIT_PSPSET
 INIT_PSPSET:
         pop ax         ; ret address
         pop bx         ; psp_seg
@@ -277,10 +292,13 @@ INIT_PSPSET:
         ret
 
 ;; COUNT init_DosExec(COUNT mode, exec_blk * ep, BYTE * lp)
-    global INIT_DOSEXEC
+    public INIT_DOSEXEC
 INIT_DOSEXEC:
         pop es                  ; ret address
-        popargs ax,bx,dx        ; mode, exec block, filename
+        ;popargs ax,bx,dx        ; mode, exec block, filename
+	pop	bx
+	pop	bx
+	pop	ax
         push es                 ; ret address
         mov ah, 4bh
         push ds                 
@@ -292,9 +310,9 @@ exec_no_error:
         ret
 
 ;; int init_setdrive(int drive)
-   global INIT_SETDRIVE
+   public INIT_SETDRIVE
 INIT_SETDRIVE:
-	mov ah, 0x0e
+	mov ah, 00eh
 common_dl_int21:
         pop bx                  ; ret address
         pop dx                  ; drive/char
@@ -303,15 +321,15 @@ common_dl_int21:
         ret
 
 ;; int init_switchar(int char)
-   global INIT_SWITCHAR
+   public INIT_SWITCHAR
 INIT_SWITCHAR:
-	mov ax, 0x3701
+	mov ax, 3701h
 	jmp short common_dl_int21
 
 ;
 ; seg ASMPASCAL allocmem(UWORD size);
 ;
-    global ALLOCMEM
+    public ALLOCMEM
 ALLOCMEM:
         pop ax           ; ret address
         pop bx           ; size
@@ -323,10 +341,11 @@ ALLOCMEM:
         ret
                         
 ;; void set_DTA(void far *dta)        
-    global SET_DTA
+    public SET_DTA
 SET_DTA:
         pop ax           ; ret address
-        popargs {bx,dx}  ; seg:off(dta)
+        pop dx
+	pop bx		;popargs {bx,dx}  ; seg:off(dta)
         push ax          ; ret address
         mov ah, 1ah
         push ds
@@ -334,3 +353,6 @@ SET_DTA:
         int 21h
         pop ds
         ret
+INIT_TEXT	ends
+		end
+		

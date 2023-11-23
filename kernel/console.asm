@@ -28,12 +28,12 @@
 ; $Header$
 ;
 
-                %include "io.inc"
+                include io.inc
 
 
-segment	_IO_FIXED_DATA
+_IO_FIXED_DATA	segment	
 
-                global  ConTable
+                public  ConTable
 ConTable        db      0Ah
                 dw      ConInit
                 dw      _IOExit
@@ -50,20 +50,22 @@ ConTable        db      0Ah
 CTL_PRT_SCREEN  equ     7200h
 CTL_P           equ     10h
 
-segment	_LOWTEXT
+_IO_FIXED_DATA	ends
+
+_LOWTEXT	segment	
 
 uScanCode	db	0		; Scan code for con: device
 
-global          _kbdType
+public          _kbdType
 _kbdType        db      0		; 00 for 84key, 10h for 102key        
 
-                global  ConInit
+                public  ConInit
 ConInit:
 	        xor	ax,ax
 	        mov	ds,ax
-	        mov	al,[496h]
+	        mov	al, byte ptr [496h]
 		and	al,10h
-		mov	byte[cs:_kbdType],al ; enhanced keyboard if bit 4 set
+		mov	byte ptr [cs:_kbdType],al ; enhanced keyboard if bit 4 set
                 jmp     _IOExit
 
 ;
@@ -77,7 +79,7 @@ ConInit:
 ; Description:
 ;       Calls KbdRdChar to read the characters.  Destroys ax.
 ;
-                global  ConRead
+                public  ConRead
 ConRead:
                 jcxz    ConRead2                ; Exit if read of zero
 
@@ -93,12 +95,12 @@ ConRead2:
 readkey:        
        		mov     ah,[cs:_kbdType]
                 int     16h
-checke0:        cmp	al,0xe0                 ; must check for 0xe0 scan code
-        	jne	.ret
+checke0:        cmp	al,0e0h                 ; must check for 0xe0 scan code
+        	jne	rret
 		or	ah,ah			; check for Greek alpha
-		jz	.ret
+		jz	rret
 		mov	al,0			; otherwise destroy the 0xe0
-.ret:		retn
+rret:		retn
         
 ;
 ; Name:
@@ -115,7 +117,7 @@ checke0:        cmp	al,0xe0                 ; must check for 0xe0 scan code
 ;       the high byte of the return and returning it if it was non-zero on
 ;       the previous read.
 ;
-                global  KbdRdChar
+                public  KbdRdChar
 KbdRdChar:
                 xor     ax,ax                   ; Zero the scratch register
                 xchg    [cs:uScanCode],al	; and swap with scan code
@@ -146,7 +148,7 @@ KbdRdRtn:
 ; Description:
 ;       Calls int 16 (get status). Sets Busy-Flag in status field. Destroys ax.
 ;
-                global  CommonNdRdExit
+                public  CommonNdRdExit
 CommonNdRdExit:		; *** tell if key waiting and return its ASCII if yes
                 mov     al,[cs:uScanCode]       ; Test for last scan code
 			; now AL is set if previous key was extended,
@@ -172,8 +174,8 @@ ConNdRd1:
                 mov     al,CTL_P
 
 ConNdRd2:
-                lds     bx,[cs:_ReqPktPtr]         ; Set the status
-		cmp     byte[bx+2],6		; input status call?
+                lds     bx, dword ptr [cs:_ReqPktPtr]         ; Set the status
+		cmp     byte ptr [bx+2],6		; input status call?
 		je      ConNdRd3
                 mov     [bx+0Dh],al             ; return the ASCII of that key
 
@@ -185,7 +187,7 @@ ConNdRd4:
 
 
 
-                global  ConInpFlush
+                public  ConInpFlush
 ConInpFlush:    ; *** flush that keyboard queue
                 call    KbdInpChar		; get all available keys
                 jmp     _IOExit			; do not even remember the last one
@@ -194,7 +196,7 @@ ConInpFlush:    ; *** flush that keyboard queue
 
 KbdInpChar:	; *** get ??00 or the last waiting key after flushing the queue
 		xor	ax,ax
-                mov     byte [cs:uScanCode],al
+                mov     byte ptr [cs:uScanCode],al
 KbdInpCh1:	
                 mov     ah,1
 		add	ah,[cs:_kbdType]
@@ -211,7 +213,7 @@ KbdInpRtn:
                 retn
 
 
-                global  ConWrite
+                public  ConWrite
 ConWrite:
                 jcxz    ConNdRd3                ; Exit if nothing to write
 ConWr1:
@@ -222,12 +224,12 @@ ConWr1:
                 jmp     _IOExit
 
 CBreak:
-                mov     byte [cs:uScanCode],3   ; Put a ^C into the buffer
+                mov     byte ptr [cs:uScanCode],3   ; Put a ^C into the buffer
 IntRetn:
                 iret
 
 
-;                global  _cso
+;                public  _cso
 ;_cso
 ;                push    bp
 ;                mov     bp,sp
@@ -238,7 +240,7 @@ IntRetn:
 ;                pop     bp
 ;                retn
 
-                global  _int29_handler
+                public  _int29_handler
 _int29_handler:
                 push    ax
                 push    si
@@ -254,3 +256,6 @@ _int29_handler:
                 pop     si
                 pop     ax
                 iret
+
+_LOWTEXT	ends
+		end

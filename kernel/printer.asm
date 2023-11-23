@@ -28,22 +28,22 @@
 ; $Header$
 ;
 
-                %include "io.inc"
+                include io.inc
 
-		%define PRT_TIMEOUT    01h
-		%define PRT_IOERROR    08h
-		%define PRT_SELECTED   10h
-		%define PRT_OUTOFPAPER 20h
-		%define PRT_ACK	       40h
-		%define PRT_NOTBUSY    80h
+PRT_TIMEOUT    EQU 01h
+PRT_IOERROR    EQU 08h
+PRT_SELECTED   EQU 10h
+PRT_OUTOFPAPER EQU 20h
+PRT_ACK	       EQU 40h
+PRT_NOTBUSY    EQU 80h
 
-		%define PRT_WRITECHAR  00h
-		%define PRT_INITPORT   01h
-		%define PRT_GETSTATUS  02h
+PRT_WRITECHAR  EQU 00h
+PRT_INITPORT   EQU 01h
+PRT_GETSTATUS  EQU 02h
 
-segment	_IO_FIXED_DATA
+_IO_FIXED_DATA	segment	
 
-                global  LptTable
+                public  LptTable
 LptTable        db      18h
                 dw      _IOExit
                 dw      _IOExit
@@ -72,8 +72,10 @@ LptTable        db      18h
                 dw      _IOCommandError
 
 
-segment	_IO_TEXT
-                global  uPrtNo
+_IO_FIXED_DATA	ends
+
+_IO_TEXT segment	
+                public  uPrtNo
 uPrtNo          db      0
 uPrtQuantum     dw      50h
                 dw      50h, 50h
@@ -129,12 +131,12 @@ PrtIOCall:
                 int     17h             ; print char al, get status ah
 
                 mov     al, ah          ; if (stat & 0x30) == 0x30 return 10;
-                and     al, PRT_SELECTED|PRT_OUTOFPAPER
-                cmp     al, PRT_SELECTED|PRT_OUTOFPAPER
+                and     al, PRT_SELECTED or PRT_OUTOFPAPER
+                cmp     al, PRT_SELECTED or PRT_OUTOFPAPER
 		mov     al, E_WRITE
                 je      ret_error_code
 
-                test    ah, PRT_OUTOFPAPER|PRT_IOERROR|PRT_TIMEOUT          ; 29h
+                test    ah, PRT_OUTOFPAPER or PRT_IOERROR or PRT_TIMEOUT          ; 29h
                 mov     al, E_NOTRDY
 		jz      ret_error_code
 
@@ -177,22 +179,22 @@ PrtOtBsy2:
                 jnz     PrtOtBsy4
                 loop    PrtOtBsy1
                 pop     ds
-                lds     bx,[cs:_ReqPktPtr]
+                lds     bx,dword ptr [cs:_ReqPktPtr]
                 sub     [bx+12h],cx
                 jmp     _IOExit
 PrtOtBsy3:
                 pop     cx
 PrtOtBsy4:
                 pop     ds
-                lds     bx,[cs:_ReqPktPtr]
+                lds     bx, dword ptr [cs:_ReqPktPtr]
                 sub     [bx+12h],cx
                 jmp     _IOErrorExit
 
 
 
 PrtGenIoctl:
-                les     di,[cs:_ReqPktPtr]
-                cmp     byte [es:di+0Dh],5
+                les     di, dword ptr [cs:_ReqPktPtr]
+                cmp     byte ptr [es:di+0Dh],5
                 je      PrtGnIoctl2
 PrtGnIoctl1:
                 jmp     _IOCommandError
@@ -242,3 +244,7 @@ PrtGnIoctl3:
 ; you must not simply print without asking for status
 ; as the BIOS has a LARGE timeout before aborting
 ;
+
+_IO_TEXT ends
+	end
+	

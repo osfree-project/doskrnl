@@ -28,11 +28,11 @@
 ; $Header$
 ;
 
-                %include "io.inc"
+                include io.inc
 
-segment	_IO_FIXED_DATA
+_IO_FIXED_DATA	segment	
 
-                global  ComTable
+                public  ComTable
 ComTable        db      0Ah
                 dw      _IOExit
                 dw      _IOExit
@@ -46,11 +46,11 @@ ComTable        db      0Ah
                 dw      ComWrite
                 dw      ComOutStat
 
+_IO_FIXED_DATA	ends
 
+_IO_TEXT	segment	
 
-segment	_IO_TEXT
-
-                extern   CommonNdRdExit
+                extern   CommonNdRdExit: near
 
 ComRead:
                 jcxz    ComRd3
@@ -76,7 +76,7 @@ BiosRdCom:
                 call    ComIOCall
                 test    ah,0Eh
                 jz      BiosRdRetn
-                add     sp,byte 2
+                add     sp, 2
                 xor     al,al
                 or      al,0B0h
                 jmp     _IOErrCnt
@@ -139,7 +139,7 @@ ComIOCall:
 
 ComInpFlush:
                 call    GetComStat
-                mov     byte [bx],0
+                mov     byte ptr [bx],0
                 jmp     _IOExit
 
 
@@ -162,10 +162,14 @@ ComWr2:
 GetComStat:
                 call    GetUnitNum
                 mov     bx,dx
-                add     bx,ComStatArray
+		assume ds:_DATA
+                add     bx, offset _DATA:ComStatArray
+		assume ds: nothing
                 retn
 
-segment	_DATA
+_IO_TEXT	ends
+
+_DATA		segment	
 
 ComStatArray    db      0, 0, 0, 0
 
@@ -180,3 +184,7 @@ ComStatArray    db      0, 0, 0, 0
 ;
 ; EndLog
 ;
+
+_DATA		ends
+		end
+		
