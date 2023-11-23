@@ -331,8 +331,9 @@ int21_1:
                 ;
                 ; I don't know who needs that, but ... (TE)
                 ;
-                mov     word ptr [_user_r+2],ss
-                mov     word ptr [_user_r],bp                         ; store and init
+		assume ds:DGROUP
+                mov     word ptr DGROUP:[_user_r+2],ss
+                mov     word ptr DGROUP:[_user_r],bp                         ; store and init
 
                 ;
                 ; Decide which stack to run on.
@@ -348,11 +349,11 @@ int21_1:
                 ; call number.  Finally, all others run on the disk stack.
                 ; They are evaluated in that order.
 
-                cmp     byte ptr [_ErrorMode],0
+                cmp     byte ptr [DGROUP:_ErrorMode],0
                 je      int21_2
 
 int21_onerrorstack:                
-                mov     cx,_error_tos
+                mov     cx,DGROUP:_error_tos
 
 
                 cli
@@ -373,8 +374,8 @@ int21_2:
                         ; mark the whole int21 api as critical
                 call begin_dos_crit_sect
 %ENDIF ; WIN31SUPPORT
-                inc     byte ptr [_InDOS]
-                mov     cx,_char_api_tos
+                inc     byte ptr [DGROUP:_InDOS]
+                mov     cx,DGROUP:_char_api_tos
                 or      ah,ah   
                 jz      int21_3
 %IFDEF WIN31SUPPORT     ; testing, this function call crashes
@@ -388,7 +389,7 @@ int21_3:
 %IFNDEF WIN31SUPPORT
                 call    end_dos_crit_sect
 %ENDIF ; NOT WIN31SUPPORT
-                mov     cx,_disk_api_tos
+                mov     cx,DGROUP:_disk_api_tos
 
 int21_normalentry:
 
@@ -406,7 +407,7 @@ int21_normalentry:
                 push    bp
                 call    _int21_service
 
-int21_exit:     dec     byte ptr [_InDOS]
+int21_exit:     dec     byte ptr [DGROUP:_InDOS]
 %IFDEF WIN31SUPPORT
                 call    end_dos_crit_sect  ; release all critical sections
 %if 0
@@ -463,7 +464,7 @@ skip_crit_sect:
 ;
 ;
 end_dos_crit_sect:
-                mov     word ptr [_Int21AX],ax       ; needed!
+                mov     word ptr [DGROUP:_Int21AX],ax       ; needed!
                 push    ax                  ; This must be here!!!
                 mov     ah,82h              ; re-enrty sake before disk stack
                 int     2ah                 ; Calling Server Hook!
@@ -526,7 +527,7 @@ int2526:
                 ; setup our local stack
                 cli
                 mov     ss,bx
-                mov     sp,_disk_api_tos
+                mov     sp,DGROUP:_disk_api_tos
                 sti
 
                 Protect386Registers
@@ -591,7 +592,7 @@ _CriticalError:
                 ;
                 ; Skip critical error routine if handler is active
                 ;
-                cmp     byte ptr [_ErrorMode],0
+                cmp     byte ptr [DGROUP:_ErrorMode],0
                 je      CritErr05               ; Jump if equal
 
                 mov     ax,FAIL
@@ -623,20 +624,20 @@ CritErr05:
                 ; Now save real ss:sp and retry info in internal stack
                 ;
                 cli
-                mov     es,word ptr [_cu_psp]
+                mov     es,word ptr [DGROUP:_cu_psp]
                 push    word ptr [es:PSP_USERSS]
                 push    word ptr [es:PSP_USERSP]
-                push    word ptr [_MachineId]
-                push    word ptr [int21regs_seg]
-                push    word ptr [int21regs_off]
-                push    word ptr [_user_r+2]
-                push    word ptr [_user_r]
-                mov     word ptr [critical_sp],sp
+                push    word ptr [DGROUP:_MachineId]
+                push    word ptr [DGROUP:int21regs_seg]
+                push    word ptr [DGROUP:int21regs_off]
+                push    word ptr DGROUP:[_user_r+2]
+                push    word ptr DGROUP:[_user_r]
+                mov     word ptr [DGROUP:critical_sp],sp
                 ;
                 ; do some clean up because user may never return
                 ;
-                inc     byte ptr [_ErrorMode]
-                dec     byte ptr [_InDOS]
+                inc     byte ptr [DGROUP:_ErrorMode]
+                dec     byte ptr [DGROUP:_InDOS]
                 ;
                 ; switch to user's stack
                 ;
@@ -658,13 +659,13 @@ CritErr05:
                 mov     bp, [cs:_DGROUP_]
                 mov     ds,bp
                 mov     ss,bp
-                mov     sp,[critical_sp]
-                pop     word ptr [_user_r]
-                pop     word ptr [_user_r+2]
-                pop     word ptr [int21regs_off]
-                pop     word ptr [int21regs_seg]
-                pop     word ptr [_MachineId]
-                mov     es, word ptr [_cu_psp]
+                mov     sp,[DGROUP:critical_sp]
+                pop     word ptr DGROUP:[_user_r]
+                pop     word ptr DGROUP:[_user_r+2]
+                pop     word ptr [DGROUP:int21regs_off]
+                pop     word ptr [DGROUP:int21regs_seg]
+                pop     word ptr [DGROUP:_MachineId]
+                mov     es, word ptr [DGROUP:_cu_psp]
                 pop     word ptr [es:PSP_USERSP]
                 pop     word ptr [es:PSP_USERSS]
                 mov     bp, sp
@@ -673,8 +674,8 @@ CritErr05:
                 ;
                 ; clear flags
                 ;
-                mov     byte ptr [_ErrorMode],0
-                inc     byte ptr [_InDOS]
+                mov     byte ptr [DGROUP:_ErrorMode],0
+                inc     byte ptr [DGROUP:_InDOS]
                 ;
                 ; Check for ignore and force fail if not ok
                 cmp     al,CONTINUE
@@ -720,17 +721,17 @@ CritErrExit:
                 ; Abort processing.
                 ;
 CritErrAbort:
-                mov     ax,[_cu_psp]
+                mov     ax,[DGROUP:_cu_psp]
                 mov     es,ax
                 cmp     ax,[es:PSP_PARENT]
                 mov     al,FAIL
                 jz      CritErrExit
                 cli
-                mov     bp,word ptr [_user_r+2]   ;Get frame
+                mov     bp,word ptr DGROUP:[_user_r+2]   ;Get frame
                 mov     ss,bp
-                mov     bp,word ptr [_user_r]
+                mov     bp,word ptr DGROUP:[_user_r]
                 mov     sp,bp
-                mov     byte ptr [_ErrorMode],1        ; flag abort
+                mov     byte ptr [DGROUP:_ErrorMode],1        ; flag abort
                 mov     ax,4C00h
                 mov     [bp+reg_ax],ax
                 sti

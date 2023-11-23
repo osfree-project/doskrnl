@@ -49,7 +49,8 @@ HMA_TEXT	segment
 _DosIdle_hlt:
                 push    ds
                 mov     ds, word ptr [cs:_DGROUP_]
-                cmp     byte ptr [_HaltCpuWhileIdle],1
+		assume ds:DGROUP
+                cmp     byte ptr [DGROUP:_HaltCpuWhileIdle],1
                 jb      DosId0
                 pushf
                 sti
@@ -62,7 +63,8 @@ _DosIdle_int:
                 call    _DosIdle_hlt
                 push    ds
                 mov     ds, word ptr [cs:_DGROUP_]
-                cmp     byte ptr [_InDOS],1
+		assume ds:DGROUP
+                cmp     byte ptr [DGROUP:_InDOS],1
                 ja      DosId1
                 call    Do_DosI
 DosId1:
@@ -72,21 +74,22 @@ DosId1:
 Do_DosI:
                 push    ax
                 push    es
-                push    word ptr [_MachineId]
-                push    word ptr [_user_r]
-                push    word ptr [_user_r+2]
-                mov     es,word ptr [_cu_psp]
+		assume ds:DGROUP
+                push    word ptr [DGROUP:_MachineId]
+                push    word ptr DGROUP:[_user_r]
+                push    word ptr DGROUP:[_user_r+2]
+                mov     es,word ptr [DGROUP:_cu_psp]
                 push    word ptr [es:PSP_USERSS]
                 push    word ptr [es:PSP_USERSP]
 
                 int     28h
 
-                mov     es,word ptr [_cu_psp]
+                mov     es,word ptr [DGROUP:_cu_psp]
                 pop     word ptr [es:PSP_USERSP]
                 pop     word ptr [es:PSP_USERSS]
-                pop     word ptr [_user_r+2]
-                pop     word ptr [_user_r]
-                pop     word ptr [_MachineId]
+                pop     word ptr DGROUP:[_user_r+2]
+                pop     word ptr DGROUP:[_user_r]
+                pop     word ptr [DGROUP:_MachineId]
                 pop     es
                 pop     ax
                 ret

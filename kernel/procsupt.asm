@@ -70,10 +70,8 @@ _exec_user:
                 sti
 ;
                 POP_ALL
-                extern _ExecUserDisableA20: near
-		assume ds:DGROUP
-                jmp _ExecUserDisableA20 ;DGROUP:...
-		assume ds:nothing
+                extern _ExecUserDisableA20: far
+                jmp short _ExecUserDisableA20 ;DGROUP:...
 do_iret:
                 extern _int21_iret: near
                 jmp _int21_iret
@@ -303,7 +301,7 @@ reloc_call_p_0:
         mov ds, word ptr [cs:_DGROUP_]
         cli
         mov ss, word ptr [cs:_DGROUP_]
-        mov sp,_p_0_tos ; load the dedicated process 0 stack
+        mov sp, DGROUP:_p_0_tos ; load the dedicated process 0 stack
         sti
         push dx         ; pass parameter 0 onto the new stack
         push ax

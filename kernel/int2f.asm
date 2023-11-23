@@ -52,7 +52,7 @@ local already
     cli
     mov ss,ax
     extern int2f_stk_top: near
-    mov sp,int2f_stk_top
+    mov sp,DGROUP:int2f_stk_top
     sti
 already:
 ; well, GCC does not currently clobber function parameters passed on the
@@ -106,7 +106,8 @@ FarTabRetn:
 WinIdle:					; only HLT if at haltlevel 2+
 		push	ds
                 mov     ds, word ptr [cs:_DGROUP_]
-		cmp	byte ptr [_HaltCpuWhileIdle],2
+		assume ds:DGROUP
+		cmp	byte ptr [DGROUP:_HaltCpuWhileIdle],2
 		pop	ds
 		jb	FarTabRetn
 		pushf
@@ -115,7 +116,7 @@ WinIdle:					; only HLT if at haltlevel 2+
 		popf
 		push	ds
                 mov     ds, word ptr [cs:_DGROUP_]
-		cmp	byte ptr [_HaltCpuWhileIdle],3
+		cmp	byte ptr [DGROUP:_HaltCpuWhileIdle],3
 		pop	ds
 		jb	FarTabRetn
 		mov	al,0			; even admit we HLTed ;-)
@@ -183,7 +184,7 @@ DriverSysCal:
                 cmp     al, 3
                 jne     Int2f?iret
                 mov     ds, word ptr [cs:_DGROUP_]
-                mov     di, _Dyn+2
+                mov     di, DGROUP:_Dyn+2
                 jmp     short Int2f?iret
 
 
@@ -501,7 +502,7 @@ qremote_fn:
                 jmp     short int2f_restore_ds
 
 remote_process_end:                   ; Terminate process
-                mov     ds, word ptr [_cu_psp]
+                mov     ds, word ptr [DGROUP:_cu_psp]
 int2f_restore_ds:
                 clc
                 int     2fh
@@ -526,7 +527,7 @@ CALL_NLS:
 		mov	bp, sp
 		push	si
 		push	di
-		mov	si, _nlsInfo	; nlsinfo
+		mov	si, DGROUP:_nlsInfo	; nlsinfo
 		les	di, [bp + 4]	; buf
 		mov	bp, [bp + 8]	; bp
 		int	02fh

@@ -347,7 +347,7 @@ extern _InitKernelConfig : near
 	mov ds, si			; => entry section
 	mov si, _LowKernelConfig	; -> our CONFIG block
 	mov es, ax			; => init data segment
-	mov di, _InitKernelConfig	; -> init's CONFIG block buffer
+	mov di, DGROUP:_InitKernelConfig	; -> init's CONFIG block buffer
 	mov cx, kernel_config_size / 2	; size that we support
 	rep movsw			; copy it over
 	if kernel_config_size AND 1
@@ -372,7 +372,10 @@ extern _debugger_present: near
 absent:
 	xor ax, ax			; no debugger present
 skip_ints_00_06:
-	mov byte ptr[_debugger_present], al
+
+	assume ds:DGROUP	
+	mov byte ptr DGROUP:_debugger_present, al
+	assume ds:nothing
 
            jmp     _FreeDOSmain
 
@@ -452,9 +455,9 @@ CONST	segment
                 ; NUL device strategy
                 ;
                 public  _nul_strtgy
-                extern GenStrategy: far
+                extern GenStrategy: near
 _nul_strtgy:
-                jmp GenStrategy
+                jmp short GenStrategy
 
                 ;
                 ; NUL device interrupt
@@ -560,7 +563,7 @@ _sfthead        dd      0               ; 0004 System File Table head
                 public  _clock
 _clock          dd      0               ; 0008 CLOCK$ device
                 public  _syscon
-_syscon         dw      _con_dev,LGROUP ; 000c console device
+_syscon         dw      LGROUP:_con_dev,LGROUP ; 000c console device
                 public  _maxsecsize
 _maxsecsize     dw      512             ; 0010 maximum bytes/sector of any block device
                 dd      0               ; 0012 pointer to buffers info structure
@@ -577,7 +580,7 @@ _lastdrive      db      0               ; 0021 value of last drive
                 public  _nul_dev
 _nul_dev:           ; 0022 device chain root
                 extern  _con_dev: near
-                dw      _con_dev, LGROUP
+                dw      LGROUP:_con_dev, LGROUP
                                         ; next is con_dev at init time.  
                 dw      8004h           ; attributes = char device, NUL bit set
                 dw      _nul_strtgy
