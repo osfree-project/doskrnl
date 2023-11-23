@@ -15,4 +15,5 @@ Main targets
 3. Remove CONFIG.SYS parsing (DOSKRNL uses settings from properties) as well as device driver loading from settings
 4. Replace FAT FS by calls to OS/2 host (Seems SVC must be used here)
 5. Implement MVDM extensions to API (see RBIL for more information)
-6. 
+x. Drop-in replacement of DOSKRNL
+
