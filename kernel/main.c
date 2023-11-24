@@ -134,7 +134,8 @@ VOID ASMCFUNC FreeDOSmain(void)
   printf("KERNEL: Boot drive = %c\n", 'A' + LoL->BootDrive - 1);
 #endif
 
-  DoInstall();
+// TODO: temporary disable INSTALL= handling
+//  DoInstall();
 
   kernel();
 }
@@ -341,13 +342,13 @@ STATIC void init_kernel(void)
   FsConfig();
 
   /* Now process CONFIG.SYS     */
-  DoConfig(0);
-  DoConfig(1);
+  //DoConfig(0);
+  //DoConfig(1);
 
   /* initialize near data and MCBs */
   PreConfig2();
   /* and process CONFIG.SYS one last time for device drivers */
-  DoConfig(2);
+  //DoConfig(2);
 
 
   /* Close all (device) files */
@@ -447,11 +448,12 @@ STATIC void kernel()
   {
     char *insertString = NULL;
 
-    if (singleStep)
-      insertString = " /Y";     /* single step AUTOEXEC */
+// TODO is it needed for DOSKENL?
+    //if (singleStep)
+      //insertString = " /Y";     /* single step AUTOEXEC */
 
-    if (SkipAllConfig)
-      insertString = " /D";     /* disable AUTOEXEC */
+    //if (SkipAllConfig)
+//      insertString = " /D";     /* disable AUTOEXEC */
 
     if (insertString)
     {

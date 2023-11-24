@@ -76,12 +76,7 @@ struct HugeSectorBlock {
 /* structure will always be on the stack, so (as far as the calling	*/
 /* convention permits) the function can treat the irp pointer as a	*/
 /* 16-bit pointer relative to SS.		     -- tkchia 20200417 */
-#if defined __GNUC__ && defined  __IA16_FEATURE_ATTRIBUTE_NO_ASSUME_SS_DATA
-__attribute__((no_assume_ss_data))
-VOID ASMCFUNC int21_syscall(iregs __seg_ss * irp, ...)
-#else
 VOID ASMCFUNC int21_syscall(iregs FAR * irp)
-#endif
 {
   Int21AX = irp->AX;
 
