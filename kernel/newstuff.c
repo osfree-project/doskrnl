@@ -25,10 +25,6 @@
 /* Cambridge, MA 02139, USA.                                    */
 /****************************************************************/
 
-#ifdef VERSION_STRINGS
-static BYTE *mainRcsId =
-    "$Id: newstuff.c 1479 2009-07-07 13:33:24Z bartoldeman $";
-#endif
 
 #include        "portab.h"
 #include        "globals.h"

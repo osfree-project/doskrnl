@@ -26,12 +26,6 @@
 /* Cambridge, MA 02139, USA.                                    */
 /****************************************************************/
 
-#ifdef MAIN
-#ifdef VERSION_STRINGS
-static BYTE *Proto_hRcsId =
-    "$Id: proto.h 1491 2009-07-18 20:48:44Z bartoldeman $";
-#endif
-#endif
 
 /* blockio.c */
 struct buffer FAR *getblk(ULONG blkno, COUNT dsk, BOOL overwrite);

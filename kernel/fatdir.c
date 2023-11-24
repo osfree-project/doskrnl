@@ -30,10 +30,6 @@
 #include "portab.h"
 #include "globals.h"
 
-#ifdef VERSION_STRINGS
-static BYTE *fatdirRcsId =
-    "$Id: fatdir.c 1561 2011-04-08 15:35:23Z bartoldeman $";
-#endif
 
 /* Description.
  *  Initialize a fnode so that it will point to the directory with 

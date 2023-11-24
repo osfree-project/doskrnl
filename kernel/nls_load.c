@@ -31,10 +31,6 @@
 #include "portab.h"
 #include "init-mod.h"
 
-#ifdef VERSION_STRINGS
-static BYTE *RcsId =
-    "$Id: nls_load.c 625 2003-06-27 22:02:57Z bartoldeman $";
-#endif
 
 /** Setup the environment for shared source NLS_LOAD.SRC **/
 /**ska obsoleted #define cfgMemory Config.cfgCSYS_memory */

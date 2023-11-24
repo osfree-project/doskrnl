@@ -31,10 +31,6 @@
 #include "date.h"
 #include "globals.h"
 
-#ifdef VERSION_STRINGS
-static BYTE *RcsId =
-    "$Id: systime.c 683 2003-09-09 17:43:43Z bartoldeman $";
-#endif
 
 const UWORD days[2][13] = {
   {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365},

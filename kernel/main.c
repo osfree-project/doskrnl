@@ -32,23 +32,11 @@
 #include "dyndata.h"
 #include "debug.h"
 
-#ifdef VERSION_STRINGS
-static BYTE *mainRcsId =
-    "$Id: main.c 1699 2012-01-16 20:45:44Z perditionc $";
-#endif
-
-static char copyright[] =
-    "(C) Copyright 1995-2022 Pasquale J. Villani and The FreeDOS Project.\n"
-    "All Rights Reserved. This is free software and comes with ABSOLUTELY NO\n"
-    "WARRANTY; you can redistribute it and/or modify it under the terms of the\n"
-    "GNU General Public License as published by the Free Software Foundation;\n"
-    "either version 2, or (at your option) any later version.\n";
 
 STATIC VOID InitIO(void);
 
 STATIC VOID update_dcb(struct dhdr FAR *);
 STATIC VOID init_kernel(VOID);
-STATIC VOID signon(VOID);
 STATIC VOID kernel(VOID);
 STATIC VOID FsConfig(VOID);
 STATIC VOID InitPrinters(VOID);
@@ -137,9 +125,6 @@ VOID ASMCFUNC FreeDOSmain(void)
 
   /* check if booting from floppy/CD */
   CheckContinueBootFromHarddisk();
-
-  /* display copyright info and kernel emulation status */
-  signon();
 
   /* initialize all internal variables, process CONFIG.SYS, load drivers, etc */
   init_kernel();
@@ -437,38 +422,6 @@ STATIC VOID FsConfig(VOID)
 
   /* Initialize the disk buffer management functions */
   /* init_call_init_buffers(); done from CONFIG.C   */
-}
-
-STATIC VOID signon()
-{
-  printf("\r%S"
-         "Kernel compatibility %d.%d - "
-#if defined(__BORLANDC__)
-  "BORLANDC"
-#elif defined(__TURBOC__)
-  "TURBOC"
-#elif defined(_MSC_VER)
-  "MSC"
-#elif defined(__WATCOMC__)
-  "WATCOMC"
-#elif defined(__GNUC__)
-  "GNUC" /* this is hypothetical only */
-#else
-#error Unknown compiler
-  generate some bullshit error here, as the compiler should be known
-#endif
-#if defined (I386)
-    " - 80386 CPU required"
-#elif defined (I186)
-    " - 80186 CPU required"
-#endif
-
-#ifdef WITHFAT32
-  " - FAT32 support"
-#endif
-  "\n\n%s",
-         MK_FP(FP_SEG(LoL), FP_OFF(LoL->os_release)),
-         MAJOR_RELEASE, MINOR_RELEASE, copyright);
 }
 
 STATIC void kernel()

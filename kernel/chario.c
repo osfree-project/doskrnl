@@ -30,10 +30,6 @@
 
 #include "portab.h"
 
-#ifdef VERSION_STRINGS
-static BYTE *charioRcsId =
-    "$Id: chario.c 1413 2009-06-01 13:41:03Z bartoldeman $";
-#endif
 
 #include "globals.h"
 

@@ -29,10 +29,6 @@
 #include "portab.h"
 #include "init-mod.h"
 
-#ifdef VERSION_STRINGS
-static char *RcsId =
-    "$Id: initclk.c 1359 2008-03-09 16:11:10Z mceric $";
-#endif
 
 /*                                                                      */
 /* WARNING - THIS DRIVER IS NON-PORTABLE!!!!                            */

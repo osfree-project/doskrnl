@@ -29,10 +29,6 @@
 #include "portab.h"
 #include "globals.h"
 
-#ifdef VERSION_STRINGS
-static BYTE *RcsId =
-    "$Id: ioctl.c 1427 2009-06-09 12:23:14Z bartoldeman $";
-#endif
 
 /*
  * WARNING:  this code is non-portable (8086 specific).

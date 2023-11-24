@@ -31,10 +31,6 @@
 #include "globals.h"
 #include "proto.h"
 
-#ifdef VERSION_STRINGS
-static BYTE *RcsId =
-    "$Id: break.c 885 2004-04-14 15:40:51Z bartoldeman $";
-#endif
 
 #define CB_FLG *(UBYTE FAR*)MK_FP(0x0, 0x471)
 #define CB_MSK 0x80

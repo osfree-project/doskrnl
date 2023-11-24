@@ -9,10 +9,6 @@
 #include "portab.h"
 #include "globals.h"
 
-#ifdef VERSION_STRINGS
-static BYTE *lfnaidRcsId =
-    "$Id: lfnapi.c 1389 2009-05-20 18:13:37Z bartoldeman $";
-#endif
 
 #ifdef WITHLFNAPI
 

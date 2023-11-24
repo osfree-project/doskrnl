@@ -30,9 +30,6 @@
 #include "portab.h"
 #include "globals.h"
 
-#ifdef VERSION_STRINGS
-BYTE *RcsId = "$Id: fatfs.c 1632 2011-06-13 16:29:14Z bartoldeman $";
-#endif
 
 /*                                                                      */
 /*      function prototypes                                             */

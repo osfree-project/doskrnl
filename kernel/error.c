@@ -28,10 +28,6 @@
 
 #include "portab.h"
 
-#ifdef VERSION_STRINGS
-static BYTE *errorRcsId =
-    "$Id: error.c 709 2003-09-24 19:34:11Z bartoldeman $";
-#endif
 
 #include "globals.h"
 

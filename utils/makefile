@@ -1,25 +1,15 @@
-!include "../mkfiles/generic.mak"
+#
+# A Makefile for ATTRIB
+# (c) osFree project,
+# author, date
+#
 
-CFLAGS = -I..$(DIRSEP)hdr
+PROJ      = exeflat
+TRGT      = $(PROJ).exe
+DESC      = DOS command interpreter
+srcfiles = $(p)exeflat$(e)
 
-production: patchobj.com exeflat.exe upxentry.bin upxdevic.bin
+ADD_COPT = -I=$(MYDIR)..$(SEP)hdr -DBUILD_UTILS
 
-patchobj.com: patchobj.c
-	$(CLT) $(CFLAGS) patchobj.c
-
-upxentry.bin: upxentry.asm
-	$(NASM) -f bin upxentry.asm -o upxentry.bin
-
-upxdevic.bin: upxdevic.asm
-	$(NASM) -f bin upxdevic.asm -o upxdevic.bin
-
-exeflat.exe: exeflat.c ../hdr/exe.h
-	$(CLC) $(CFLAGS) exeflat.c
-
-
-clobber: clean
-
-clean:
-	$(RM) *.obj *.bak *.crf *.xrf *.map *.lst *.las *.cod *.err status.me
-	$(RM) exeflat.exe patchobj.com upxentry.bin upxdevic.bin
+!include $(%ROOT)tools/mk/tools.mk
 

@@ -30,10 +30,6 @@
 #include "portab.h"
 #include "init-mod.h"
 
-#ifdef VERSION_STRINGS
-static BYTE *RcsId =
-    "$Id: initoem.c 1321 2007-05-21 02:16:36Z bartoldeman $";
-#endif
 
 #define EBDASEG 0x40e
 #define RAMSIZE 0x413

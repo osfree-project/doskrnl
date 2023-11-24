@@ -28,10 +28,6 @@
 #include "globals.h"
 #include "dyndata.h"
 
-#ifdef VERSION_STRINGS
-static BYTE *dskRcsId =
-    "$Id: dsk.c 1702 2012-02-04 08:46:16Z perditionc $";
-#endif
 
 #if defined(DEBUG)
 #define DebugPrintf(x) printf x

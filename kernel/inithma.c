@@ -66,10 +66,6 @@
 #include "portab.h"
 #include "init-mod.h"
 
-#ifdef VERSION_STRINGS
-static BYTE *RcsId =
-    "$Id: inithma.c 956 2004-05-24 17:07:04Z bartoldeman $";
-#endif
 
 BYTE DosLoadedInHMA BSS_INIT(FALSE);  /* set to TRUE if loaded HIGH          */
 BYTE HMAclaimed BSS_INIT(0);          /* set to TRUE if claimed from HIMEM   */

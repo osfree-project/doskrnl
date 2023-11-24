@@ -34,10 +34,6 @@
 #include "win.h"
 #include "debug.h"
 
-#ifdef VERSION_STRINGS
-BYTE *RcsId =
-    "$Id: inthndlr.c 1709 2012-02-08 02:13:49Z perditionc $";
-#endif
 
 #ifdef TSC
 STATIC VOID StartTrace(VOID);

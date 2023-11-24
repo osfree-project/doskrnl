@@ -27,12 +27,6 @@
 /* Cambridge, MA 02139, USA.                                    */
 /****************************************************************/
 
-#ifdef VERSION_STRINGS
-#ifdef MAIN
-static BYTE *Globals_hRcsId =
-    "$Id: globals.h 1705 2012-02-07 08:10:33Z perditionc $";
-#endif
-#endif
 
 #include "device.h"
 #include "mcb.h"

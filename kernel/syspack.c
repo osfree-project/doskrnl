@@ -30,10 +30,6 @@
 #include "portab.h"
 #include "globals.h"
 
-#ifdef VERSION_STRINGS
-static BYTE *syspackRcsId =
-    "$Id: syspack.c 485 2002-12-09 00:17:15Z bartoldeman $";
-#endif
 
 #ifdef NONNATIVE
 UDWORD getlong(REG VOID * vp)
