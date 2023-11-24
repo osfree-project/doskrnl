@@ -16,7 +16,7 @@ srcfiles  = $(p)kernel$(e) $(p)entry$(e) $(p)io$(e) $(p)console$(e) $(p)serial$(
 			$(p)main$(e) $(p)config$(e) $(p)initoem$(e) $(p)inithma$(e) $(p)dyninit$(e) $(p)iprf$(e) $(p)initdisk$(e) &
 			$(p)initclk$(e) $(p)floppy$(e) $(p)rdpcclk$(e) $(p)wrpcclk$(e) $(p)wratclk$(e) $(p)os2fs$(e) $(p)os2dir$(e)
 
-#$(p)cpu$(e) $(p)iasmsupt$(e) $(p)memdisk$(e)
+#$(p)cpu$(e) $(p)iasmsupt$(e) $(p)memdisk$(e) 
 
 # FAT support not required for DOSKRNL
 # $(p)fatdir$(e) $(p)fatfs$(e) $(p)fattab$(e)
