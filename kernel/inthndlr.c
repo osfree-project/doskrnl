@@ -642,9 +642,6 @@ dispatch:
     case 0x1d:
     case 0x1e:
     case 0x20:
-#ifndef TSC
-    case 0x61:
-#endif
     case 0x6b:
       lr.AL = 0;
       break;
@@ -1367,12 +1364,46 @@ dispatch:
       lr.AX = rc;
       goto short_check;
 
-#ifdef TSC
       /* UNDOCUMENTED: no-op                                          */
       /*                                                              */
       /* DOS-C: tsc support                                           */
+      /* DOSKRNL: Flags: Undocumented function
+
+INT 21 - OS/2 v1.x FAPI - OS/2 FILE SYSTEM JOIN/SUBST
+
+	AH = 61h
+	BP = 6467h ("dg")
+	AL = function
+	    00h list (i.e. get)
+	    01h add
+	    02h delete
+	BX = drive number
+	CX = size of buffer
+	SI = type (0002h JOIN, 0003h SUBST)
+	ES:DI -> buffer
+Return: CF clear if successful
+	    AX = 0000h
+	    ES:DI buffer filled, if appropriate
+	CF set on error
+	    AX = error code
+Notes:	used by JOIN and SUBST to communicate with the OS/2 file system
+	for function 00h (list), the ES:DI buffer is filled with the ASCIZ
+	  JOIN/SUBST path or an empty string if the drive is not JOINed/SUBSTed
+	also supported by OS/2 v2.0+ Virtual DOS Machines
+*/
     case 0x61:
+      if (r->BP==0x6467)
+      {
+        switch (lr.AL)
+        {
+          case 0x01:
+          case 0x02:
+          case 0x03:
+            break;
+        }
+      }
 #ifdef DEBUG
+      else {
       switch (lr.AL)
       {
         case 0x01:
@@ -1383,10 +1414,10 @@ dispatch:
           bDumpRegs = FALSE;
           break;
       }
+      }
 #endif
       lr.AL = 0x00;
       break;
-#endif
 
       /* UNDOCUMENTED: return current psp                             
          case 0x62: is in int21_syscall
