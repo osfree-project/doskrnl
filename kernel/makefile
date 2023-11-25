@@ -29,8 +29,18 @@ JWASM	= 1
 ADD_ASMOPT = -I=$(MYDIR)..$(SEP)hdr
 ADD_COPT = -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntHMA_TEXT -bt=DOS
 
+# additions to install target
+INSTALL_ADD = 1
+
 !include $(%ROOT)tools/mk/appsdos.mk
 
-
 .asm: $(MYDIR)..$(SEP)drivers
+
+#$(PATH)doskrnl: $(PATH)doskrnl$(SEP)kernel$(SEP)doskrnl.exe
+
+install_add: $(DEST)$(SEP)$(PROJ)
+
+$(DEST)$(SEP)$(PROJ): $(PATH)$(PROJ).exe
+ @$(SAY) INST     $^. $(LOG)
+ $(BLD)host$(SEP)$(%HOST)$(SEP)$(RELDIR)..$(SEP)utils$(SEP)exeflat.exe $< $^@ 0x60
 
