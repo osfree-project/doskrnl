@@ -808,7 +808,8 @@ UWORD DosGetFree(UBYTE drive, UWORD * navc, UWORD * bps, UWORD * nc)
   if (navc == NULL)
   {
       /* hazard: no error checking! */
-    flush_buffers(dpbp->dpb_unit);
+// No buffers in DOSKRNL
+//    flush_buffers(dpbp->dpb_unit);
     dpbp->dpb_flags = M_CHANGED;
   }
 

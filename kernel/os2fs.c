@@ -350,14 +350,16 @@ COUNT media_check(REG struct dpb FAR * dpbp)
     case M_DONT_KNOW:
       /* IBM PCDOS technical reference says to call BLDBPB if */
       /* there are no used buffers                            */
-      if (dirty_buffers(dpbp->dpb_unit))
-        return SUCCESS;
+// No buffers in DOSKRNL
+//      if (dirty_buffers(dpbp->dpb_unit))
+//        return SUCCESS;
 
       /* If it definitely changed, don't know (falls through) */
       /* or has been changed, rebuild the bpb.                */
     /* case M_CHANGED: */
     default:
-      setinvld(dpbp->dpb_unit);
+// No buffers in DOSKRNL
+      //setinvld(dpbp->dpb_unit);
       ret = rqblockio(C_BLDBPB, dpbp);
       if (ret < SUCCESS)
         return ret;

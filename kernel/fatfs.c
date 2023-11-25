@@ -1716,7 +1716,8 @@ COUNT media_check(REG struct dpb FAR * dpbp)
       /* or has been changed, rebuild the bpb.                */
     /* case M_CHANGED: */
     default:
-      setinvld(dpbp->dpb_unit);
+// No buffers in DOSKRNL
+      //setinvld(dpbp->dpb_unit);
       ret = rqblockio(C_BLDBPB, dpbp);
       if (ret < SUCCESS)
         return ret;

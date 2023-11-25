@@ -224,7 +224,8 @@ int int21_fat32(lregs *r)
         return rc;
 
       /* hazard: no error checking! */
-      flush_buffers(dpb->dpb_unit);
+// No buffers in DOSKRNL
+//      flush_buffers(dpb->dpb_unit);
       dpb->dpb_flags = M_CHANGED;       /* force reread of drive BPB/DPB */
     
       if (media_check(dpb) < 0)
@@ -317,7 +318,8 @@ int int21_fat32(lregs *r)
         {
         rebuild_dpb:
             /* hazard: no error checking! */
-          flush_buffers(dpb->dpb_unit);
+// No buffers in DOSKRNL
+//          flush_buffers(dpb->dpb_unit);
           dpb->dpb_flags = M_CHANGED;
           
           if (media_check(dpb) < 0)
@@ -820,7 +822,8 @@ dispatch:
           break;
         }
         /* hazard: no error checking! */        
-        flush_buffers(dpb->dpb_unit);
+// No buffers in DOSKRNL
+//        flush_buffers(dpb->dpb_unit);
         dpb->dpb_flags = M_CHANGED;     /* force flush and reread of drive BPB/DPB */
 
 #ifdef WITHFAT32
@@ -1884,8 +1887,9 @@ VOID ASMCFUNC int2526_handler(WORD mode, struct int25regs FAR * r)
   if (r->ax != 0)
   {
     SET_CARRY_FLAG();
-    if (mode == DSKWRITEINT26)
-      setinvld(drv);
+// No buffers in DOSKRNL
+//    if (mode == DSKWRITEINT26)
+      //setinvld(drv);
   }
   --InDOS;
 }
@@ -1965,7 +1969,8 @@ VOID ASMCFUNC int2F_12_handler(struct int2f12regs FAR *pr)
         tsize = (r.BX + 0xf) & 0xfffffff0; /* align to paragraph */
         if (tsize < size)
           size = (UWORD)tsize;
-        AllocateHMASpace(offs, offs+size);
+// Not required for DOSKRNL because no any buffers
+        //AllocateHMASpace(offs, offs+size);
         firstAvailableBuf += size;
       }
     }
