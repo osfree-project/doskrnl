@@ -10,7 +10,7 @@ DESC      = dos emulation kernel
 srcfiles  = $(p)kernel$(e) $(p)entry$(e) $(p)io$(e) $(p)console$(e) $(p)serial$(e) $(p)printer$(e) $(p)dsk$(e) &
 			$(p)sysclk$(e) $(p)asmsupt$(e) $(p)execrh$(e) $(p)nlssupt$(e) $(p)procsupt$(e) $(p)dosidle$(e) $(p)int2f$(e) &
 			$(p)nls_hc$(e) $(p)apisupt$(e) $(p)intr$(e) $(p)irqstack$(e) $(p)blockio$(e) $(p)chario$(e) $(p)systime$(e) &
-			$(p)error$(e) $(p)break$(e) $(p)dosfns$(e) $(p)fcbfns$(e) $(p)os2config$(e) &
+			$(p)error$(e) $(p)break$(e) $(p)dosfns$(e) $(p)os2config$(e) $(p)os2fcbfns$(e) &
 			$(p)inthndlr$(e) $(p)ioctl$(e) $(p)memmgr$(e) $(p)task$(e) $(p)newstuff$(e) $(p)nls$(e) $(p)network$(e) &
 			$(p)prf$(e) $(p)misc$(e) $(p)strings$(e) $(p)syspack$(e) $(p)lfnapi$(e) &
 			$(p)main$(e) $(p)initoem$(e) $(p)inithma$(e) $(p)dyninit$(e) $(p)iprf$(e) $(p)initdisk$(e) &
@@ -23,6 +23,9 @@ srcfiles  = $(p)kernel$(e) $(p)entry$(e) $(p)io$(e) $(p)console$(e) $(p)serial$(
 
 # no CONFIG.SYS parser for DOSKRNL
 #$(p)config$(e) 
+
+# FCB functions routed to SVC calls in DOSKRNL
+#$(p)fcbfns$(e)
 
 NOLIBS	= 1
 JWASM	= 1
