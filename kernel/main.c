@@ -56,21 +56,11 @@ __segment DosTextSeg = 0;
 
 struct lol FAR *LoL = &DATASTART;
 
-struct _KernelConfig InitKernelConfig = { -1 };
-#if 0
-char kernel_command_line[256] = { 0, -1 }; /* special none value */
-int kernel_command_line_length BSS_INIT(0);
-#endif
-//UBYTE debugger_present = 0xFF;
-					/* initialised in kernel.asm
-				   do NOT set 0 here or compiler may
-				   move it into bss that we zero out */
+//struct _KernelConfig InitKernelConfig = { -1 };
 
 VOID ASMCFUNC FreeDOSmain(void)
 {
   unsigned char drv;
-  unsigned char FAR *p;
-//  char * pp;
 
 #ifdef _MSC_VER
   extern FAR prn_dev;
@@ -81,18 +71,7 @@ VOID ASMCFUNC FreeDOSmain(void)
   /* clear the Init BSS area (what normally the RTL does */
   memset(_ib_start, 0, _ib_end - _ib_start);
 
-                        /*  if the kernel has been UPX'ed,
-                                CONFIG info is stored at 50:e2 ..fc
-                            and the bootdrive (passed from BIOS)
-                            at 50:e0
-                        */
-
   drv = LoL->BootDrive + 1;
-  p = MK_FP(0, 0x5e0);
-  {
-    *p = drv - 1;	/* compatibility with older kernels */
-  }
-
   if (drv >= 0x80)
     drv = 3; /* C: */
   LoL->BootDrive = drv;
@@ -105,27 +84,6 @@ VOID ASMCFUNC FreeDOSmain(void)
 
   /* install DOS API and other interrupt service routines, basic kernel functionality works */
   setup_int_vectors();
-
-#ifdef DEBUG
-  /* printf must go after setup_int_vectors call */
-  if (kernel_command_line[0] == 0 && kernel_command_line[1] == (char)-1) {
-    printf("\nKERNEL: Command line is not specified.\n");
-  } else {
-    printf("\nKERNEL: Command line is \"%s\"\n", kernel_command_line);
-  }
-#endif
-
-  #if 0
-  kernel_command_line_length = strlen(kernel_command_line);
-  for (pp = kernel_command_line; *pp; ++pp) {
-    if (*pp == ';') {
-      *pp = 0;
-    }
-  }
-  #endif
-
-  /* check if booting from floppy/CD */
-  //CheckContinueBootFromHarddisk();
 
   /* initialize all internal variables, process CONFIG.SYS, load drivers, etc */
   init_kernel();
@@ -673,103 +631,3 @@ STATIC VOID InitSerialPorts(VOID)
   }
 }
 
-/*****************************************************************
-        if kernel.config.BootHarddiskSeconds is set,
-        the default is to boot from harddisk, because
-        the user is assumed to just have forgotten to
-        remove the floppy/bootable CD from the drive.
-        
-        user has some seconds to hit ANY key to continue
-        to boot from floppy/cd, else the system is 
-        booted from HD
-*/
-
-// DOSKRNL doesn't skip boot from FDD
-#if 0
-STATIC int EmulatedDriveStatus(int drive,char statusOnly)
-{
-  iregs r;
-  char buffer[0x13];
-  buffer[0] = 0x13;
-
-  r.a.b.h = 0x4b;               /* bootable CDROM - get status */
-  r.a.b.l = statusOnly;
-  r.d.b.l = (char)drive;          
-  r.si  = (int)buffer;
-  init_call_intr(0x13, &r);     
-  
-  if (r.flags & 1)
-        return FALSE;
-  
-  return TRUE;  
-}
-
-STATIC void CheckContinueBootFromHarddisk(void)
-{
-  char *bootedFrom = "Floppy/CD";
-  iregs r;
-  int key;
-
-  if (InitKernelConfig.BootHarddiskSeconds == 0)
-    return;
-
-  if (LoL->BootDrive >= 3)
-  {
-#if 0
-    if (!EmulatedDriveStatus(0x80,1))
-#endif
-    {
-      /* already booted from HD */
-      return;
-    }
-  }
-  else {
-#if 0
-    if (!EmulatedDriveStatus(0x00,1))
-#endif
-      bootedFrom = "Floppy";
-  }
-
-  printf("\n"
-         "\n"
-         "\n"
-         "     Hit any key within %d seconds to continue boot from %s\n"
-         "     Hit 'H' or    wait %d seconds to boot from Harddisk\n",
-         InitKernelConfig.BootHarddiskSeconds,
-         bootedFrom,
-         InitKernelConfig.BootHarddiskSeconds
-    );
-
-  key = GetBiosKey(InitKernelConfig.BootHarddiskSeconds);
-  
-  if (key != -1 && (key & 0xff) != 'h' && (key & 0xff) != 'H')
-  {
-    /* user has hit a key, continue to boot from floppy/CD */
-    printf("\n");
-    return;
-  }
-
-  /* reboot from harddisk */
-  EmulatedDriveStatus(0x00,0);
-  EmulatedDriveStatus(0x80,0);
-
-  /* now jump and run */
-  r.a.x = 0x0201;
-  r.c.x = 0x0001;
-  r.d.x = 0x0080;
-  r.b.x = 0x7c00;
-  r.es  = 0;
-
-  init_call_intr(0x13, &r);
-
-  {
-#if __GNUC__
-    asm volatile("jmp $0,$0x7c00");
-#else
-    void (far *reboot)(void) = (void (far*)(void)) MK_FP(0x0,0x7c00);
-
-    (*reboot)();
-#endif
-  }
-}
-#endif

@@ -29,6 +29,7 @@
 		Release: 0 if released version, >0 for svn builds (e.g. svn revision #)
             
 */
+#if 0
 typedef struct _KernelConfig {
   char CONFIG[6];               /* "CONFIG" */
   unsigned short ConfigSize;
@@ -36,8 +37,8 @@ typedef struct _KernelConfig {
   //unsigned char DLASortByDriveNo;
   //unsigned char InitDiskShowDriveAssignment;
   //signed char SkipConfigSeconds;
-  unsigned char ForceLBA;
-  unsigned char GlobalEnableLBAsupport; /* = 0 --> disable LBA support */
+  //unsigned char ForceLBA;
+  //unsigned char GlobalEnableLBAsupport; /* = 0 --> disable LBA support */
   //signed char BootHarddiskSeconds;
 
   /* for version 2042 and higher only */
@@ -51,3 +52,4 @@ typedef struct _KernelConfig {
 	   1 = do check by running breakpoint,
 	   2 = assume present */
 } KernelConfig;
+#endif

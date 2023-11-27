@@ -564,7 +564,7 @@ void DosDefinePartition(struct DriveParamS *driveParam,
   /* Turn of LBA if not forced and the partition is within 1023 cyls and of the right type */
   /* the FileSystem type was internally converted to LBA_xxxx if a non-LBA partition
      above cylinder 1023 was found */
-  if (!InitKernelConfig.ForceLBA && !ExtLBAForce && !IsLBAPartition(pEntry->FileSystem))
+  if (!0/*InitKernelConfig.ForceLBA*/ && !ExtLBAForce && !IsLBAPartition(pEntry->FileSystem))
     pddt->ddt_descflags &= ~DF_LBA;
   pddt->ddt_ncyl = driveParam->chs.Cylinder;
 
@@ -642,10 +642,10 @@ STATIC int LBA_Get_Drive_Parameters(int drive, struct DriveParamS *driveParam)
 
   /* for tests - disable LBA support,
      even if exists                    */
-  if (!InitKernelConfig.GlobalEnableLBAsupport)
-  {
-    goto StandardBios;
-  }
+  //if (!InitKernelConfig.GlobalEnableLBAsupport)
+  //{
+//    goto StandardBios;
+//  }
   /* check for LBA support */
   regs.b.x = 0x55aa;
   regs.a.b.h = 0x41;
@@ -818,7 +818,7 @@ BOOL is_suspect(struct CHS *chs, struct CHS *pEntry_chs)
 void print_warning_suspect(char *partitionName, UBYTE fs, struct CHS *chs,
                            struct CHS *pEntry_chs)
 {
-  if (!InitKernelConfig.ForceLBA)
+  if (!0/*InitKernelConfig.ForceLBA*/)
   {
     printf("WARNING: using suspect partition %s FS %02x:", partitionName, fs);
     printCHS(" with calculated values ", chs);
@@ -907,7 +907,7 @@ BOOL ScanForPrimaryPartitions(struct DriveParamS * driveParam, int scan_type,
         continue;
       }
 
-      if (!InitKernelConfig.ForceLBA && !ExtLBAForce 
+      if (!0/*InitKernelConfig.ForceLBA*/ && !ExtLBAForce 
           && !IsLBAPartition(pEntry->FileSystem))
       {
         printf
@@ -988,7 +988,7 @@ int Read1LBASector(struct DriveParamS *driveParam, unsigned drive,
        the extended LBA partition type indicator.
     */
     if ((driveParam->descflags & DF_LBA) &&
-        (InitKernelConfig.ForceLBA || ExtLBAForce || chs.Cylinder > 1023))
+        (0/*InitKernelConfig.ForceLBA*/ || ExtLBAForce || chs.Cylinder > 1023))
     {
       dap.number_of_blocks = 1;
       dap.buffer_address = buffer;

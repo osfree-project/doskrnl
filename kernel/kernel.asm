@@ -65,8 +65,9 @@ STACK_SIZE      equ     384/2           ; stack allocated in words
 krnlstart:
 bootloadunit:		; (byte of short jump re-used)
 entry:
-                jmp short realentry
+;                jmp short realentry
 
+		if 0
 ;************************************************************       
 ; KERNEL CONFIGURATION AREA
 ; this is copied up on the very beginning
@@ -84,8 +85,8 @@ configstart:
 ;DLASortByDriveNo            db 0        ; sort disks by drive order
 ;InitDiskShowDriveAssignment db 1        ;
 ;SkipConfigSeconds           db 2        ;
-ForceLBA                    db 0        ;
-GlobalEnableLBAsupport      db 1        ;
+;ForceLBA                    db 0        ;
+;GlobalEnableLBAsupport      db 1        ;
 ;BootHarddiskSeconds         db 0        ;
 
 ; The following VERSION resource must be keep in sync with VERSION.H
@@ -100,10 +101,11 @@ configend:
 kernel_config_size equ configend - config_signature
 	; must be below-or-equal the size of struct _KernelConfig
 	;  in the file kconfig.h !
-
 		db (32 - 4) - ($ - PSP) dup (0)
 bootloadstack:
 		dd 0
+		endif
+
 
 
 ;************************************************************       
@@ -130,8 +132,8 @@ realentry:                              ; execution continues here
 	xor di, di
 	mov byte ptr [di + bootloadunit - PSP], bl
 	push bp
-	mov word ptr [di + bootloadstack - PSP], sp
-	mov word ptr [di + bootloadstack + 2 - PSP], ss
+	;mov word ptr [di + bootloadstack - PSP], sp
+	;mov word ptr [di + bootloadstack + 2 - PSP], ss
 	jmp entry_common
 
 
@@ -329,6 +331,7 @@ cont:           ; Now set up call frame
 ;!!             inc     al
 ;!!                mov     byte [_NumFloppies],al ; and how many
 
+	if 0
 initialise_kernel_config:
 extern _InitKernelConfig : near
 
@@ -344,6 +347,7 @@ extern _InitKernelConfig : near
 	movsb				; allow odd size
 	endif
 	mov ds, ax			; => init data segment
+	endif
 
 	if 0
 check_debugger_present:
