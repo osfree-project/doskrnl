@@ -79,12 +79,6 @@ public realentry
 realentry:                              ; execution continues here
 	push cs
 	pop ds
-	push bp
-	jmp entry_common
-
-
-	db 0C0h - ($ - PSP) dup (090h)	; (nop opcodes) magic offset (used by exeflat)
-entry_common:
 	ifdef	DEBUG
                 push ax
                 push bx
@@ -96,7 +90,10 @@ entry_common:
                 pop bx
                 pop ax
 	endif
-                jmp     IGROUP:kernel_start
+	jmp     INIT_TEXT:kernel_start
+
+
+	db 0C0h - ($ - PSP) dup (090h)	; (nop opcodes) magic offset (used by exeflat)
 
 beyond_entry   db   256-(beyond_entry-entry) dup (0)
                                         ; scratch area for data (DOS_PSP)
@@ -126,11 +123,6 @@ kernel_start:
 	endif
 
                 cli
-		if	1
-		mov	dx, I_GROUP	; Remove this if command-line enabled
-		endif
-                mov     ss, dx
-                mov     sp, init_tos
 		;; TODO Use DOSKRNL init structure
                 int     12h             ; move init text+data to higher memory
                 mov     cl,6
@@ -751,7 +743,7 @@ IB_E	ENDS
 _BSS	ENDS
 
 _DATA	segment 
-; kernel startup stack
+; kernel startup stack (not used now)
                 public  init_tos
                 dw 512 dup (0)
 init_tos:
