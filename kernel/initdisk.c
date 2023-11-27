@@ -550,7 +550,6 @@ void DosDefinePartition(struct DriveParamS *driveParam,
 {
   ddt nddt;
   ddt *pddt = &nddt;
-  struct CHS chs;
 
   if (nUnits >= NDEV)
   {
@@ -602,10 +601,12 @@ void DosDefinePartition(struct DriveParamS *driveParam,
      Tom likes this too, so he made it configurable by SYS CONFIG ...
    */
 
+#if 0
   if (InitKernelConfig.InitDiskShowDriveAssignment)
   {
     char *ExtPri;
     int num;
+    struct CHS chs;
 
     LBA_to_CHS(&chs, StartSector, driveParam);
 
@@ -624,7 +625,7 @@ void DosDefinePartition(struct DriveParamS *driveParam,
     printf(", start=%6lu MB, size=%6lu MB\n",
            StartSector / 2048, pEntry->NumSect / 2048);
   }
-
+#endif
   nUnits++;
 }
 
@@ -1316,7 +1317,7 @@ void ReadAllPartitionTables(void)
     foundPartitions[HardDrive] = 0;
   }
 
-  if (InitKernelConfig.DLASortByDriveNo == 0)
+  //if (InitKernelConfig.DLASortByDriveNo == 0)
   {
     /* printf("Drive Letter Assignment - DOS order\n"); */
 
@@ -1343,6 +1344,7 @@ void ReadAllPartitionTables(void)
       ProcessDisk(SCAN_PRIMARY2, HardDrive, foundPartitions[HardDrive]);
     }
   }
+#if 0
   else
   {
     UBYTE bootdrv = peekb(0,0x5e0);
@@ -1381,6 +1383,7 @@ void ReadAllPartitionTables(void)
       ProcessDisk(SCAN_PRIMARY2, HardDrive, foundPartitions[HardDrive]);
     }
   }
+#endif
 }
 
 /* disk initialization: returns number of units */

@@ -43,14 +43,22 @@ STACK_SIZE      equ     384/2           ; stack allocated in words
 ; DOSKRNL BEGINS HERE, i.e. this is byte 0 of DOSKRNL (at 60:0)
 ;************************************************************       
 ;
-; On entry: SS:BP contains DOSKRNL init structure
+; On entry: 
+;	SS:SP initial stack (around 400 bytes)
+;	SS:BP contains DOSKRNL init structure
 ;
-; Offset 	Size 	Description
-; 0 	2 	First free segment after DOSKRNL
-; 2 	2 	Size of memory - first free segment
-; 4 	2 	Size of init area
-; ???? 	??? 	Unknown
-; 22 	4 	Pointer to linked list of VDDs
+;0 	2 	First free segment after DOSKRNL
+;2 	2 	Size of memory - first free segment (paragraphs)
+;4 	2 	Size of init area (paragraphs)
+;6 	2 	Value of BREAK setting
+;8 	2 	Value of DOS setting
+;10 	4 	Far pointer to list of DOS DEVICE setting
+;14 	4 	Far pointer to SHELL (filepath only)
+;18 	4 	Far pointer to SHELL (arguments)
+;22 	4 	Pointer to linked list of VDD
+;25 	1 	Current drive (0-A, 1-B,…)
+;26 	1 	Boot drive (0-A, 1-B,…)
+;???? 	??? 	???? 
 ;
 ;************************************************************
 
@@ -73,20 +81,20 @@ config_signature:
 
 configstart:
 
-DLASortByDriveNo            db 0        ; sort disks by drive order
-InitDiskShowDriveAssignment db 1        ;
-SkipConfigSeconds           db 2        ;
+;DLASortByDriveNo            db 0        ; sort disks by drive order
+;InitDiskShowDriveAssignment db 1        ;
+;SkipConfigSeconds           db 2        ;
 ForceLBA                    db 0        ;
 GlobalEnableLBAsupport      db 1        ;
-BootHarddiskSeconds         db 0        ;
+;BootHarddiskSeconds         db 0        ;
 
 ; The following VERSION resource must be keep in sync with VERSION.H
-Version_OemID               db 0FDH     ; OEM_ID
-Version_Major               db 2
-Version_Revision            dw 43       ; REVISION_SEQ
-Version_Release             dw 1        ; 0=release build, >0=svn#
+;Version_OemID               db 0FDH     ; OEM_ID
+;Version_Major               db 2
+;Version_Revision            dw 43       ; REVISION_SEQ
+;Version_Release             dw 1        ; 0=release build, >0=svn#
 
-CheckDebugger	      	db 0	; 0 = no check, 1 = check, 2 = assume present
+;CheckDebugger	      	db 0	; 0 = no check, 1 = check, 2 = assume present
 configend:
 
 kernel_config_size equ configend - config_signature
@@ -199,6 +207,7 @@ extern _kernel_command_line : near
 initialise_command_line_buffer:
 	mov dx, I_GROUP
 	mov es, dx
+	assume es:PSP
 
 	mov bl, [bootloadunit]
 	assume ds:PSP
@@ -320,25 +329,6 @@ cont:           ; Now set up call frame
 ;!!             inc     al
 ;!!                mov     byte [_NumFloppies],al ; and how many
 
-		; DOSKRNL always work in MVM, so CPU known and always 386+
-		if	0
-                call _query_cpu
-%if XCPU != 86
- %if XCPU < 186 || (XCPU % 100) != 86 || (XCPU / 100) > 9
-  %fatal Unknown CPU level defined
- %endif
-                cmp     al, (XCPU / 100)
-                jb      cpu_abort       ; if CPU not supported -->
-
-                cpu XCPU
-%endif
-                mov     [_CPULevel], al
-		else
-		assume ds:LGROUP
-		mov     [LGROUP:_CPULevel], 3	; 386 here
-		assume ds:nothing
-		endif
-		
 initialise_kernel_config:
 extern _InitKernelConfig : near
 
@@ -355,6 +345,7 @@ extern _InitKernelConfig : near
 	endif
 	mov ds, ax			; => init data segment
 
+	if 0
 check_debugger_present:
 extern _debugger_present: near
 
@@ -375,68 +366,11 @@ skip_ints_00_06:
 
 	assume ds:DGROUP	
 	mov byte ptr DGROUP:_debugger_present, al
+	endif
 	assume ds:nothing
 
            jmp     _FreeDOSmain
 
-	if 0
-%if XCPU != 86
-        cpu 8086
-
-cpu_abort:
-        mov ah, 0Fh
-        int 10h                 ; get video mode, bh = active page
-
-        call .first             ; print string that follows (address pushed by call)
-
-%define LOADNAME "FreeDOS"
-        db 13,10                ; (to emit a blank line after the tracecodes)
-        db 13,10
-        db LOADNAME, " load error: An 80", '0'+(XCPU / 100)
-        db   "86 processor or higher is required by this build.",13,10
-        db "To use ", LOADNAME, " on this processor please"
-        db  " obtain a compatible build.",13,10
-        db 13,10
-        db "Press any key to reboot.",13,10
-        db 0
-
-.display:
-        mov ah, 0Eh
-        mov bl, 07h             ; page in bh, bl = colour for some modes
-        int 10h                 ; write character (may change bp!)
-
-        db 0A8h                 ; [test al,imm8] skip "pop si" [=imm8] after the first iteration 
-.first:
-        pop si                  ; (first iteration only) get message address from stack
-        cs lodsb                ; get character
-        test al, al             ; zero ?
-        jnz .display            ; no, display and get next character -->
-
-        xor ax, ax
-        xor dx, dx
-        int 13h                 ; reset floppy disks
-        xor ax, ax
-        mov dl, 80h
-        int 13h                 ; reset hard disks
-
-                                ; this "test ax, imm16" opcode is used to
-        db 0A9h                 ; skip "sti" \ "hlt" [=imm16] during first iteration
-.wait:
-        sti
-        hlt                     ; idle while waiting for keystroke
-        mov ah, 01h
-        int 16h                 ; get keystroke
-        jz .wait                ; none available, loop -->
-
-        mov ah, 00h
-        int 16h                 ; remove keystroke from buffer
-
-        int 19h                 ; reboot
-        jmp short $             ; (in case it returns, which it shouldn't)
-
-        cpu XCPU
-%endif        ; XCPU != 86
-	endif
 
 INIT_TEXT	ENDS
 
@@ -601,10 +535,11 @@ _BootDrive:
 		db      1               ; 0043 drive we booted from   
 
                 public  _CPULevel
-_CPULevel       db      0               ; 0044 cpu type (MSDOS >0 indicates dword moves ok, ie 386+)
+_CPULevel       db      3               ; 0044 cpu type (MSDOS >0 indicates dword moves ok, ie 386+)
                                         ; unless compatibility issues arise FD uses
                                         ; 0=808x, 1=18x, 2=286, 3=386+
-                                        ; see cpu.asm, use >= as may add checks for 486 ...
+                                        ; use >= as may add checks for 486 ...
+					; DOSKRNL always 386+
 
                 dw      0               ; 0045 Extended memory in KBytes
 buf_info:               

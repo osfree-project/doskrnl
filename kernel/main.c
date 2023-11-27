@@ -41,7 +41,7 @@ STATIC VOID kernel(VOID);
 STATIC VOID FsConfig(VOID);
 STATIC VOID InitPrinters(VOID);
 STATIC VOID InitSerialPorts(VOID);
-STATIC void CheckContinueBootFromHarddisk(void);
+//STATIC void CheckContinueBootFromHarddisk(void);
 STATIC void setup_int_vectors(void);
 
 #ifdef _MSC_VER
@@ -61,7 +61,8 @@ struct _KernelConfig InitKernelConfig = { -1 };
 char kernel_command_line[256] = { 0, -1 }; /* special none value */
 int kernel_command_line_length BSS_INIT(0);
 #endif
-UBYTE debugger_present = 0xFF;	/* initialised in kernel.asm
+//UBYTE debugger_present = 0xFF;
+					/* initialised in kernel.asm
 				   do NOT set 0 here or compiler may
 				   move it into bss that we zero out */
 
@@ -124,7 +125,7 @@ VOID ASMCFUNC FreeDOSmain(void)
   #endif
 
   /* check if booting from floppy/CD */
-  CheckContinueBootFromHarddisk();
+  //CheckContinueBootFromHarddisk();
 
   /* initialize all internal variables, process CONFIG.SYS, load drivers, etc */
   init_kernel();
@@ -282,7 +283,7 @@ STATIC void setup_int_vectors(void)
     setvec(i, empty_handler); /* note: int 31h segment should be DOS DS */
   HaltCpuWhileIdle = 0;
   for (pvec = vectors; pvec < vectors + (sizeof vectors/sizeof *pvec); pvec++)
-    if ((pvec->intno & 0x80) == 0 || debugger_present == 0)
+    //if ((pvec->intno & 0x80) == 0 || debugger_present == 0) // No debugger check in DOSKRNL
       setvec(pvec->intno & 0x7F, (intvec)MK_FP(FP_SEG(empty_handler), pvec->handleroff));
   pokeb(0, 0x30 * 4, 0xea);
   pokel(0, 0x30 * 4 + 1, (ULONG)cpm_entry);
@@ -683,6 +684,8 @@ STATIC VOID InitSerialPorts(VOID)
         booted from HD
 */
 
+// DOSKRNL doesn't skip boot from FDD
+#if 0
 STATIC int EmulatedDriveStatus(int drive,char statusOnly)
 {
   iregs r;
@@ -769,3 +772,4 @@ STATIC void CheckContinueBootFromHarddisk(void)
 #endif
   }
 }
+#endif

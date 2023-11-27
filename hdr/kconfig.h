@@ -2,7 +2,7 @@
     KConfig.h  
     
     DLASortByDriveNo
-        0 : Drive Letter Assignement ike MSDOS
+        0 : Drive Letter Assignement like MSDOS
         1 : DLA - first drive completely first, then to next drive    
 
     InitDiskShowDriveAssignment
@@ -33,20 +33,20 @@ typedef struct _KernelConfig {
   char CONFIG[6];               /* "CONFIG" */
   unsigned short ConfigSize;
 
-  unsigned char DLASortByDriveNo;
-  unsigned char InitDiskShowDriveAssignment;
-  signed char SkipConfigSeconds;
+  //unsigned char DLASortByDriveNo;
+  //unsigned char InitDiskShowDriveAssignment;
+  //signed char SkipConfigSeconds;
   unsigned char ForceLBA;
   unsigned char GlobalEnableLBAsupport; /* = 0 --> disable LBA support */
-  signed char BootHarddiskSeconds;
+  //signed char BootHarddiskSeconds;
 
   /* for version 2042 and higher only */
-  unsigned char Version_OemID;
-  unsigned char Version_Major;
-  unsigned short Version_Revision;
-  unsigned short Version_Release;
+  //unsigned char Version_OemID;
+  //unsigned char Version_Major;
+  //unsigned short Version_Revision;
+  //unsigned short Version_Release;
 
-  unsigned char CheckDebugger;
+  //unsigned char CheckDebugger;
 	/* 0 = do not check (assume absent),
 	   1 = do check by running breakpoint,
 	   2 = assume present */

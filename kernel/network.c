@@ -30,7 +30,6 @@
 #include "portab.h"
 #include "globals.h"
 
-
 /* see RBIL D-2152 and D-215D06 before attempting
    to change these two functions!
  */
@@ -56,4 +55,3 @@ int network_redirector(unsigned cmd)
 {
   return network_redirector_fp(cmd, NULL);
 }
-
