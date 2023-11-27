@@ -63,59 +63,9 @@ STACK_SIZE      equ     384/2           ; stack allocated in words
 ;************************************************************
 
 krnlstart:
-bootloadunit:		; (byte of short jump re-used)
 entry:
-;                jmp short realentry
-
-		if 0
-;************************************************************       
-; KERNEL CONFIGURATION AREA
-; this is copied up on the very beginning
-; it's a good idea to keep this in sync with KConfig.h
-;************************************************************       
-                public _LowKernelConfig                                        
-_LowKernelConfig:
-config_signature:
-                db 'CONFIG'             ; constant
-                dw configend-configstart; size of config area
-                                        ; to be checked !!!
-
-configstart:
-
-;DLASortByDriveNo            db 0        ; sort disks by drive order
-;InitDiskShowDriveAssignment db 1        ;
-;SkipConfigSeconds           db 2        ;
-;ForceLBA                    db 0        ;
-;GlobalEnableLBAsupport      db 1        ;
-;BootHarddiskSeconds         db 0        ;
-
-; The following VERSION resource must be keep in sync with VERSION.H
-;Version_OemID               db 0FDH     ; OEM_ID
-;Version_Major               db 2
-;Version_Revision            dw 43       ; REVISION_SEQ
-;Version_Release             dw 1        ; 0=release build, >0=svn#
-
-;CheckDebugger	      	db 0	; 0 = no check, 1 = check, 2 = assume present
-configend:
-
-kernel_config_size equ configend - config_signature
-	; must be below-or-equal the size of struct _KernelConfig
-	;  in the file kconfig.h !
-		db (32 - 4) - ($ - PSP) dup (0)
-bootloadstack:
-		dd 0
-		endif
-
-
 
 ;************************************************************       
-; KERNEL CONFIGURATION AREA END
-;************************************************************       
-
-
-;************************************************************       
-; KERNEL real entry (at ~60:20)
-;                               
 ; moves the INIT part of kernel.sys to high memory (~9000:0)
 ; then jumps there
 ; to aid debugging, some '123' messages are output
@@ -129,11 +79,7 @@ public realentry
 realentry:                              ; execution continues here
 	push cs
 	pop ds
-	xor di, di
-	mov byte ptr [di + bootloadunit - PSP], bl
 	push bp
-	;mov word ptr [di + bootloadstack - PSP], sp
-	;mov word ptr [di + bootloadstack + 2 - PSP], ss
 	jmp entry_common
 
 
@@ -150,8 +96,6 @@ entry_common:
                 pop bx
                 pop ax
 	endif
-	push cs
-	pop ds
                 jmp     IGROUP:kernel_start
 
 beyond_entry   db   256-(beyond_entry-entry) dup (0)
@@ -163,25 +107,7 @@ PSP	ENDS
 
 INIT_TEXT	segment
 
-%ifdef TEST_FILL_INIT_TEXT
- %macro step 0
- %if _LFSR & 1
-  %assign _LFSR (_LFSR >> 1) ^ 0x80200003
- %else
-  %assign _LFSR (_LFSR >> 1)
- %endif
- %endmacro
-
-	align 16
- %assign _LFSR 1
- %rep 1024 * 8
-	dd _LFSR
-	step
- %endrep
-%endif
-
                 extern  _FreeDOSmain : near
-                ;extern  _query_cpu : near
                 
                 ;
                 ; kernel start-up
@@ -197,57 +123,6 @@ kernel_start:
                 int 010h
                 popf
                 pop bx
-	endif
-
-	; No command line for DOSKRNL
-	if	0
-extern _kernel_command_line : near
-
-		; INP:	ds => entry section, with CONFIG block
-		;		and compressed entry help data
-		;		(actually always used now)
-initialise_command_line_buffer:
-	mov dx, I_GROUP
-	mov es, dx
-	assume es:PSP
-
-	mov bl, [bootloadunit]
-	assume ds:PSP
-	lds si, dword ptr [bootloadstack]		; -> original ss:sp - 2
-	assume ds:nothing
-	lea ax, [si + 2]		; ax = original sp
-	mov si, word ptr [si]		; si = original bp
-
-		; Note that the kernel command line buffer in
-		;  the init data segment is pre-initialised to
-		;  hold 0x00 0xFF in the first two bytes. This
-		;  is used to indicate no command line present,
-		;  as opposed to an empty command line which
-		;  will hold 0x00 0x00.
-		; If any of the branches to .none are taken then
-		;  the buffer is not modified so it retains the
-		;  0x00 0xFF contents.
-	cmp si, 114h			; buffer fits below ss:bp ?
-	jb .none			; no -->
-	cmp word [si - 14h], "CL"	; signature passed to us ?
-	jne .none			; no -->
-	lea si, [si - 114h]		; -> command line buffer
-	cmp ax, si			; stack top starts below-or-equal buffer ?
-	ja .none			; no -->
-	mov di, _kernel_command_line	; our buffer
-	mov cx, 255
-	xor ax, ax
-	push di
-	rep movsb		; copy up to 255 bytes
-	stosb			; truncate
-	pop di
-	mov ch, 1		; cx = 256
-	repne scasb		; scan for terminator
-	rep stosb		; clear remainder of buffer
-				; (make sure we do not have 0x00 0xFF
-				;  even if the command line given is
-				;  actually the empty string)
-.none:
 	endif
 
                 cli
@@ -298,10 +173,6 @@ initialise_command_line_buffer:
                 rep     movsw
                 
                 cld
-;%ifndef WATCOM                          ; for WATCOM: CS equal for HMA and INIT
-                add     ax,dx
-                mov     es,ax           ; otherwise CS -> init_text
-;%endif
                 push    es
                 mov     ax,cont
                 push    ax
@@ -325,53 +196,8 @@ cont:           ; Now set up call frame
                 mov     byte ptr [LGROUP:_BootDrive],bl ; tell where we came from
 		assume ds:nothing
 
-;!!             int     11h
-;!!             mov     cl,6
-;!!             shr     al,cl
-;!!             inc     al
-;!!                mov     byte [_NumFloppies],al ; and how many
-
-	if 0
-initialise_kernel_config:
-extern _InitKernelConfig : near
-
 	mov ax, ss			; => init data segment
-	mov si, 60h
-	mov ds, si			; => entry section
-	mov si, _LowKernelConfig	; -> our CONFIG block
-	mov es, ax			; => init data segment
-	mov di, DGROUP:_InitKernelConfig	; -> init's CONFIG block buffer
-	mov cx, kernel_config_size / 2	; size that we support
-	rep movsw			; copy it over
-	if kernel_config_size AND 1
-	movsb				; allow odd size
-	endif
 	mov ds, ax			; => init data segment
-	endif
-
-	if 0
-check_debugger_present:
-extern _debugger_present: near
-
-	mov al, 1			; assume debugger present
-	cmp byte ptr [di - kernel_config_size + (CheckDebugger - config_signature)], 1
-	ja skip_ints_00_06		; 2 means assume present
-	jb absent			; 0 means assume absent
-	clc				; 1 means check
-	int 3				; break to debugger
-	jc skip_ints_00_06
-		; The debugger should set CY here to indicate its
-		;  presence. The flag set is checked later to skip
-		;  overwriting the interrupt vectors 00h, 01h, 03h,
-		;  and 06h. This logic is taken from lDOS init.
-absent:
-	xor ax, ax			; no debugger present
-skip_ints_00_06:
-
-	assume ds:DGROUP	
-	mov byte ptr DGROUP:_debugger_present, al
-	endif
-	assume ds:nothing
 
            jmp     _FreeDOSmain
 
