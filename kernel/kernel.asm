@@ -55,12 +55,26 @@ STACK_SIZE      equ     384/2           ; stack allocated in words
 ;10 	4 	Far pointer to list of DOS DEVICE setting
 ;14 	4 	Far pointer to SHELL (filepath only)
 ;18 	4 	Far pointer to SHELL (arguments)
-;22 	4 	Pointer to linked list of VDD
+;22 	4 	FAR pointer to linked list of VDD
 ;25 	1 	Current drive (0-A, 1-B,…)
 ;26 	1 	Boot drive (0-A, 1-B,…)
 ;???? 	??? 	???? 
 ;
 ;************************************************************
+
+initdos	struct
+wMemStart	dw	?
+wMemSize	dw	?
+wInitSize	dw	?
+wBreak		dw	?
+wDOS		dw	?
+pDevices	dd	?
+pShell		dd	?
+pShellArgs	dd	?
+pVDDs		dd	?
+bCurrentDrive	db	?
+bBootDrive	db	?
+initdos	ends
 
 krnlstart:
 entry:
@@ -79,17 +93,6 @@ public realentry
 realentry:                              ; execution continues here
 	push cs
 	pop ds
-	ifdef	DEBUG
-                push ax
-                push bx
-                pushf              
-                mov ax, 0e31h           ; '1' Tracecode - kernel entered
-                mov bx, 00f0h                                        
-                int 010h
-                popf
-                pop bx
-                pop ax
-	endif
 	jmp     INIT_TEXT:kernel_start
 
 
@@ -102,6 +105,7 @@ public _master_env
 
 PSP	ENDS
 
+
 INIT_TEXT	segment
 
                 extern  _FreeDOSmain : near
@@ -110,21 +114,32 @@ INIT_TEXT	segment
                 ; kernel start-up
                 ;
 kernel_start:
+
+        sti		; FreeDOS kernel disables interupt to configure stack, but DOSKRNL is not.
 	cld
 
 	ifdef	DEBUG
+                push ax
                 push bx
                 pushf              
-                mov ax, 0e32h           ; '2' Tracecode - kernel entered
+                mov ax, 0e31h           ; '1' Tracecode - kernel entered
                 mov bx, 00f0h                                        
                 int 010h
                 popf
                 pop bx
+                pop ax
 	endif
 
-                cli
-		;; TODO Use DOSKRNL init structure
-                int     12h             ; move init text+data to higher memory
+	assume ds:LGROUP
+	mov	bl, [bp].initdos.bBootDrive
+	mov     byte ptr [LGROUP:_BootDrive],bl ; tell where we came from
+	assume ds:nothing
+
+	; Calc start of new init segment
+	mov	ax, [bp].initdos.wMemSize
+	sub	ax, [bp].initdos.wInitSize	; Cut init structure
+	add	ax, [bp].initdos.wMemStart	; Add start segment
+
                 mov     cl,6
                 shl     ax,cl           ; convert kb to para
                 mov     dx,15 + INITSIZE
@@ -135,14 +150,13 @@ kernel_start:
                 mov     dx,INITTEXTSIZE ; para aligned
                 shr     dx,cl
                 add     ax,dx
-                mov     ss,ax           ; set SS to init data segment
-                sti                     ; now enable them
+
                 mov     ax,cs
                 mov     dx,__HMATextEnd ; para aligned
                 shr     dx,cl
-;%ifdef WATCOM
+%ifdef WATCOM
                 add     ax,dx
-;%endif
+%endif
                 mov     ds,ax
                 mov     si,-2 + INITSIZE; word aligned
                 lea     cx,[si+2]
@@ -169,6 +183,7 @@ kernel_start:
                 mov     ax,cont
                 push    ax
                 retf
+		
 cont:           ; Now set up call frame
                 mov     ds,[cs:_INIT_DGROUP]
                 mov     bp,sp           ; and set up stack frame for c
@@ -183,13 +198,8 @@ cont:           ; Now set up call frame
                 pop bx
 		endif
 
-		;; TODO Use DOSKRNL init structure
-		assume ds:LGROUP
-                mov     byte ptr [LGROUP:_BootDrive],bl ; tell where we came from
-		assume ds:nothing
-
-	mov ax, ss			; => init data segment
-	mov ds, ax			; => init data segment
+;	mov ax, ss			; => init data segment
+;	mov ds, ax			; => init data segment
 
            jmp     _FreeDOSmain
 
@@ -744,15 +754,14 @@ _BSS	ENDS
 
 _DATA	segment 
 ; kernel startup stack (not used now)
-                public  init_tos
-                dw 512 dup (0)
-init_tos:
+;                public  init_tos
+;                dw 512 dup (0)
+;init_tos:
 ; the last paragraph of conventional memory might become an MCB
                 db 16 dup (0)
                 public __init_end
 __init_end:
 init_end:        
-
 ; blockdev private stack
                 public  blk_stk_top
                 dw 256 dup (0)
