@@ -56,8 +56,8 @@ STACK_SIZE      equ     384/2           ; stack allocated in words
 ;14 	4 	Far pointer to SHELL (filepath only)
 ;18 	4 	Far pointer to SHELL (arguments)
 ;22 	4 	FAR pointer to linked list of VDD
-;25 	1 	Current drive (0-A, 1-B,…)
-;26 	1 	Boot drive (0-A, 1-B,…)
+;26 	1 	Current drive (0-A, 1-B,…)
+;27 	1 	Boot drive (0-A, 1-B,…)
 ;???? 	??? 	???? 
 ;
 ;************************************************************
@@ -130,10 +130,10 @@ kernel_start:
                 pop ax
 	endif
 
-	assume ds:LGROUP
+	;assume ds:LGROUP
 	mov	bl, [bp].initdos.bBootDrive
 	mov     byte ptr [LGROUP:_BootDrive],bl ; tell where we came from
-	assume ds:nothing
+	;assume ds:nothing
 
 	; Calc start of new init segment
 	mov	ax, [bp].initdos.wMemSize

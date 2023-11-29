@@ -35,6 +35,8 @@ JWASM	= 1
 ADD_ASMOPT = -I=$(MYDIR)..$(SEP)hdr
 ADD_COPT = -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntHMA_TEXT -bt=DOS
 
+#INITCFLAGS=$(ALLCFLAGS)-ntINIT_TEXT-gTGROUP-ndI
+
 # additions to install target
 INSTALL_ADD = 1
 
@@ -50,3 +52,32 @@ $(DEST)$(SEP)$(PROJ): $(PATH)$(PROJ).exe
  @$(SAY) INST     $^. $(LOG)
  $(BLD)host$(SEP)$(%HOST)$(SEP)$(RELDIR)..$(SEP)utils$(SEP)exeflat.exe $< $^@ 0x60
 
+
+#config.obj:   config.c  
+#	$(CC) $(INITCFLAGS) $*.c
+#	$(INITPATCH) $*.obj
+#
+#initoem.obj:  initoem.c 
+#	$(CC) $(INITCFLAGS) $*.c
+#	$(INITPATCH) $*.obj
+#
+#main.obj:     main.c 
+#	$(CC) $(INITCFLAGS) $*.c
+#	$(INITPATCH) $*.obj
+#
+#inithma.obj:  inithma.c 
+#	$(CC) $(INITCFLAGS) $*.c
+#	$(INITPATCH) $*.obj
+#
+#dyninit.obj:  dyninit.c 
+#	$(CC) $(INITCFLAGS) $*.c
+#	$(INITPATCH) $*.obj
+#
+#initdisk.obj: initdisk.c  
+#	$(CC) $(INITCFLAGS) $*.c
+#	$(INITPATCH) $*.obj
+#
+#initclk.obj: initclk.c  
+#	$(CC) $(INITCFLAGS) $*.c
+#	$(INITPATCH) $*.obj
+#
