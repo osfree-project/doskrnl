@@ -130,10 +130,10 @@ kernel_start:
                 pop ax
 	endif
 
-	;assume ds:LGROUP
+	assume ds:LGROUP
 	mov	bl, [bp].initdos.bBootDrive
 	mov     byte ptr [LGROUP:_BootDrive],bl ; tell where we came from
-	;assume ds:nothing
+	assume ds:nothing
 
 	; Calc start of new init segment
 	mov	ax, [bp].initdos.wMemSize

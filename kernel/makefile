@@ -33,7 +33,7 @@ srcfiles  = $(p)kernel$(e) $(p)entry$(e) $(p)io$(e) $(p)console$(e) $(p)serial$(
 NOLIBS	= 1
 JWASM	= 1
 ADD_ASMOPT = -I=$(MYDIR)..$(SEP)hdr
-ADD_COPT = -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntHMA_TEXT -bt=DOS
+ADD_COPT = -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntHMA_TEXT
 
 #INITCFLAGS=$(ALLCFLAGS)-ntINIT_TEXT-gTGROUP-ndI
 
@@ -52,32 +52,32 @@ $(DEST)$(SEP)$(PROJ): $(PATH)$(PROJ).exe
  @$(SAY) INST     $^. $(LOG)
  $(BLD)host$(SEP)$(%HOST)$(SEP)$(RELDIR)..$(SEP)utils$(SEP)exeflat.exe $< $^@ 0x60
 
+$(PATH)os2config.$(O): $(MYDIR)os2config.c
+ @$(SAY) CC       $^. $(LOG)
+ $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=D:\osfree\DOS\doskrnl\kernel\ -i=D:\osfree\DOS\doskrnl\kernel\.. -i=D:\osfree\build\DOS\doskrnl\kernel\ -i=D:\osfree\build\DOS\doskrnl\kernel\.. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gTGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
-#config.obj:   config.c  
-#	$(CC) $(INITCFLAGS) $*.c
-#	$(INITPATCH) $*.obj
-#
-#initoem.obj:  initoem.c 
-#	$(CC) $(INITCFLAGS) $*.c
-#	$(INITPATCH) $*.obj
-#
-#main.obj:     main.c 
-#	$(CC) $(INITCFLAGS) $*.c
-#	$(INITPATCH) $*.obj
-#
-#inithma.obj:  inithma.c 
-#	$(CC) $(INITCFLAGS) $*.c
-#	$(INITPATCH) $*.obj
-#
-#dyninit.obj:  dyninit.c 
-#	$(CC) $(INITCFLAGS) $*.c
-#	$(INITPATCH) $*.obj
-#
-#initdisk.obj: initdisk.c  
-#	$(CC) $(INITCFLAGS) $*.c
-#	$(INITPATCH) $*.obj
-#
-#initclk.obj: initclk.c  
-#	$(CC) $(INITCFLAGS) $*.c
-#	$(INITPATCH) $*.obj
-#
+$(PATH)initclk.$(O): $(MYDIR)initclk.c
+ @$(SAY) CC       $^. $(LOG)
+ $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=D:\osfree\DOS\doskrnl\kernel\ -i=D:\osfree\DOS\doskrnl\kernel\.. -i=D:\osfree\build\DOS\doskrnl\kernel\ -i=D:\osfree\build\DOS\doskrnl\kernel\.. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gTGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
+
+$(PATH)initoem.$(O): $(MYDIR)initoem.c
+ @$(SAY) CC       $^. $(LOG)
+ $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=D:\osfree\DOS\doskrnl\kernel\ -i=D:\osfree\DOS\doskrnl\kernel\.. -i=D:\osfree\build\DOS\doskrnl\kernel\ -i=D:\osfree\build\DOS\doskrnl\kernel\.. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gTGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
+
+$(PATH)main.$(O): $(MYDIR)main.c
+ @$(SAY) CC       $^. $(LOG)
+ $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=D:\osfree\DOS\doskrnl\kernel\ -i=D:\osfree\DOS\doskrnl\kernel\.. -i=D:\osfree\build\DOS\doskrnl\kernel\ -i=D:\osfree\build\DOS\doskrnl\kernel\.. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gTGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
+
+$(PATH)inithma.$(O): $(MYDIR)inithma.c
+ @$(SAY) CC       $^. $(LOG)
+ $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=D:\osfree\DOS\doskrnl\kernel\ -i=D:\osfree\DOS\doskrnl\kernel\.. -i=D:\osfree\build\DOS\doskrnl\kernel\ -i=D:\osfree\build\DOS\doskrnl\kernel\.. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gTGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
+
+$(PATH)dyninit.$(O): $(MYDIR)dyninit.c
+ @$(SAY) CC       $^. $(LOG)
+ $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=D:\osfree\DOS\doskrnl\kernel\ -i=D:\osfree\DOS\doskrnl\kernel\.. -i=D:\osfree\build\DOS\doskrnl\kernel\ -i=D:\osfree\build\DOS\doskrnl\kernel\.. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gTGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
+
+$(PATH)initdisk.$(O): $(MYDIR)initdisk.c
+ @$(SAY) CC       $^. $(LOG)
+ $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=D:\osfree\DOS\doskrnl\kernel\ -i=D:\osfree\DOS\doskrnl\kernel\.. -i=D:\osfree\build\DOS\doskrnl\kernel\ -i=D:\osfree\build\DOS\doskrnl\kernel\.. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gTGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
+
+
