@@ -476,9 +476,56 @@ dispatch:
   /* The dispatch handler                                         */
   switch (lr.AH)
   {
-      /* int 21h common error handler                                 */
     case 0x64:
-        goto error_invalid;
+      // OS/2 VDM API
+      if (r->CX==0x636C)
+      {
+        switch (r->BX==0)
+        {
+          case 0x0000:
+            switch (r->DX)
+            {
+              case 0x0000:
+              case 0x0001:
+              case 0x0002:
+              case 0x0003:
+              case 0x0004:
+              case 0x0005:
+              case 0x0006:
+              case 0x0007:
+              case 0x0008:
+                break;
+            }
+          case 0x0025:	//DOS32StartSession
+          case 0x0082:	//DosGetCP
+          case 0x00B6:	//DosQFSAttach
+          case 0x00BF:	//DosEditName
+          case 0x00CB:	//DosForceDelete
+          case 0x0144:	//Dos32CreateEventSem
+          case 0x0145:	//Dos32OpenEvenSem
+          case 0x0146:	//Dos32CloseEventSem
+          case 0x0147:	//Dos32ResetEventSem
+          case 0x0148:	//Dos32PostEventSem
+          case 0x0149:	//Dos32WaitEventSem
+          case 0x014A:	//Dos32QueryEventSem
+          case 0x014B:	//Dos32CreateMutexSem
+          case 0x014C:	//Dos32OpenMutexSem
+          case 0x014D:	//Dos32CloseMutexSem
+          case 0x014E:	//Dos32RequestMutexSem
+          case 0x014F:	//Dos32ReleaseMutexSem
+          case 0x0150:	//Dos32QueryMutexSem
+          case 0x0151:	//Dos32CreateMuxWaitSem
+          case 0x0152:	//Dos32OpenMuxWaitSem
+          case 0x0153:	//Dos32CloseMuxWaitSem
+          case 0x0154:	//Dos32WaitMuxWaitSem
+          case 0x0155:	//Dos32AddMuxWaitSem
+          case 0x0156:	//Dos32DeleteMuxWaitSem
+          case 0x0157:	//Dos32QueryMuxWaitSem
+            break;
+        }
+      }
+      /* int 21h common error handler                                 */
+      else goto error_invalid;
 
       /* case 0x00:   --> Simulate a DOS-4C-00 */
 
@@ -1559,6 +1606,12 @@ Notes:	used by JOIN and SUBST to communicate with the OS/2 file system
 */
       /* Extended Open-Creat, not fully functional. (bits 4,5,6 of BH) */
     case 0x6c:
+      if (lr.AL==0x01)
+      {
+         // OS/2 VDM DosOpen2
+      }
+      else
+      {
       /* high nibble must be <= 1, low nibble must be <= 2 */
       if ((lr.DL & 0xef) > 0x2)
         goto error_invalid;
@@ -1569,6 +1622,7 @@ Notes:	used by JOIN and SUBST to communicate with the OS/2 file system
         /* action */
         lr.CX = (UWORD)(lrc >> 16);
       goto long_check;
+      }
 
       /* case 0x6d and above not implemented : see default; return AL=0 */
 
