@@ -1379,7 +1379,11 @@ dispatch:
       break;
 
     case 0x5f:
-      if (lr.AL == 7 || lr.AL == 8)
+      if ((lr.AL >=0x32) && (lr.AL <= 0x3A))
+      {
+        // OS/2 VDM Pipe functions
+      }
+      else if (lr.AL == 7 || lr.AL == 8)
       {
         if (lr.DL < lastdrive)
         {
@@ -1624,6 +1628,10 @@ Notes:	used by JOIN and SUBST to communicate with the OS/2 file system
       goto long_check;
       }
 
+//    case 0x6d: // OS/2 VDM DosMkDir2
+//    case 0x6e: // OS/2 VDM DosEnumAttrib
+//    case 0x6f: // OS/2 VDM DosQMaxEASize
+    
       /* case 0x6d and above not implemented : see default; return AL=0 */
 
 #ifdef WITHFAT32
