@@ -32,8 +32,8 @@ srcfiles  = $(p)kernel$(e) $(p)entry$(e) $(p)io$(e) $(p)console$(e) $(p)serial$(
 
 NOLIBS	= 1
 JWASM	= 1
-ADD_ASMOPT = -I=$(MYDIR)..$(SEP)hdr
-ADD_COPT = -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntHMA_TEXT
+ADD_ASMOPT = -I=$(MYDIR)..$(SEP)hdr -DWIN31SUPPORT
+ADD_COPT = -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntHMA_TEXT -DWIN31SUPPORT
 
 #INITCFLAGS=$(ALLCFLAGS)-ntINIT_TEXT-gTGROUP-ndI
 

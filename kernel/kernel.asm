@@ -419,7 +419,7 @@ _version_flags  db      0
                 extern  _os_release: near
 os_release      dw      _os_release
 
-%IFDEF WIN31SUPPORT
+IFDEF WIN31SUPPORT
                 public  _winStartupInfo, _winInstanced
 _winInstanced    dw 0 ; set to 1 on WinInit broadcast, 0 on WinExit broadcast
 _winStartupInfo:
@@ -431,12 +431,12 @@ _winStartupInfo:
 instance_table: ; should include stacks, Win may auto determine SDA region
                 ; we simply include whole DOS data segment
                 dw seg _DATASTART, 0 ; [SEG:OFF] address of region's base
-                dw markEndInstanceData wrt seg _DATASTART ; size in bytes
+                dw offset markEndInstanceData ;wrt seg _DATASTART ; size in bytes
                 dd 0 ; 0 marks end of table
                 dw 0 ; and 0 length for end of instance_table entry
                 public  _winPatchTable
 _winPatchTable: ; returns offsets to various internal variables
-                dw 0x0006      ; DOS version, major# in low byte, eg. 6.00
+                dw 0006h       ; DOS version, major# in low byte, eg. 6.00
                 dw save_DS     ; where DS stored during int21h dispatch
                 dw save_BX     ; where BX stored during int21h dispatch
                 dw _InDOS      ; offset of InDOS flag
@@ -450,7 +450,7 @@ _winPatchTable: ; returns offsets to various internal variables
                 dw _uppermem_root ; seg of last arena header in conv memory
                                   ; this matches MS DOS's location, but 
                                   ; do we have the same meaning?
-%ENDIF ; WIN31SUPPORT
+ENDIF ; WIN31SUPPORT
 
 ;;  The first 5 sft entries appear to have to be at DS:00cc
                 db (0cch - ($ - DATASTART)) dup (0)
