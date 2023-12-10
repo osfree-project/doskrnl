@@ -46,7 +46,7 @@ STACK_SIZE      equ     384/2           ; stack allocated in words
 ; On entry: 
 ;	SS:SP initial stack (around 400 bytes)
 ;	SS:BP contains DOSKRNL init structure
-;
+;                        
 ;0 	2 	First free segment after DOSKRNL
 ;2 	2 	Size of memory - first free segment (paragraphs)
 ;4 	2 	Size of init area (paragraphs)
@@ -55,7 +55,7 @@ STACK_SIZE      equ     384/2           ; stack allocated in words
 ;10 	4 	Far pointer to list of DOS DEVICE setting
 ;14 	4 	Far pointer to SHELL (filepath only)
 ;18 	4 	Far pointer to SHELL (arguments)
-;22 	4 	FAR pointer to linked list of VDD
+;22 	4 	Far pointer to linked list of VDD
 ;26 	1 	Current drive (0-A, 1-B,…)
 ;27 	1 	Boot drive (0-A, 1-B,…)
 ;???? 	??? 	???? 

@@ -9,7 +9,7 @@ TRGT      = $(PROJ).exe
 DESC      = dos emulation kernel
 srcfiles  = $(p)kernel$(e) $(p)entry$(e) $(p)io$(e) $(p)console$(e) $(p)serial$(e) $(p)printer$(e) $(p)dsk$(e) &
 			$(p)sysclk$(e) $(p)asmsupt$(e) $(p)execrh$(e) $(p)nlssupt$(e) $(p)procsupt$(e) $(p)dosidle$(e) $(p)int2f$(e) &
-			$(p)nls_hc$(e) $(p)apisupt$(e) $(p)intr$(e) $(p)irqstack$(e) $(p)chario$(e) $(p)systime$(e) &
+			$(p)nls_hc$(e) $(p)apisupt$(e) $(p)intr$(e) $(p)irqstack$(e) $(p)chario$(e) $(p)os2systime$(e) &
 			$(p)error$(e) $(p)break$(e) $(p)dosfns$(e) $(p)os2config$(e) $(p)os2fcbfns$(e) &
 			$(p)inthndlr$(e) $(p)ioctl$(e) $(p)memmgr$(e) $(p)task$(e) $(p)newstuff$(e) $(p)nls$(e) $(p)network$(e) &
 			$(p)prf$(e) $(p)misc$(e) $(p)strings$(e) $(p)syspack$(e) $(p)lfnapi$(e) $(p)os2blockio$(e) &
@@ -29,6 +29,9 @@ srcfiles  = $(p)kernel$(e) $(p)entry$(e) $(p)io$(e) $(p)console$(e) $(p)serial$(
 
 # Buffered IO not supported by DOSKRNL
 #$(p)blockio$(e)
+
+# Date  time functions routed to SVC
+#$(p)systime$(e)
 
 NOLIBS	= 1
 JWASM	= 1
