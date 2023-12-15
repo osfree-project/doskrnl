@@ -40,11 +40,12 @@ PSP	segment
 STACK_SIZE      equ     384/2           ; stack allocated in words
 
 ;************************************************************       
-; DOSKRNL BEGINS HERE, i.e. this is byte 0 of DOSKRNL (at 60:0)
+; DOSKRNL BEGINS HERE, i.e. this is byte 0 of DOSKRNL
+; Unlike standard DOS boot can be not at 0060:0000
 ;************************************************************       
 ;
 ; On entry: 
-;	SS:SP initial stack (around 400 bytes)
+;	SS:SP initial stack (around 800 bytes)
 ;	SS:BP contains DOSKRNL init structure
 ;                        
 ;0 	2 	First free segment after DOSKRNL
@@ -56,8 +57,8 @@ STACK_SIZE      equ     384/2           ; stack allocated in words
 ;14 	4 	Far pointer to SHELL (filepath only)
 ;18 	4 	Far pointer to SHELL (arguments)
 ;22 	4 	Far pointer to linked list of VDD
-;26 	1 	Current drive (0-A, 1-B,…)
-;27 	1 	Boot drive (0-A, 1-B,…)
+;26 	1 	Current drive (1-A, 2-B, 3-C, ...)
+;27 	1 	Boot drive (1-A, 2-B, 3-C, ...)
 ;???? 	??? 	???? 
 ;
 ;************************************************************
@@ -76,25 +77,31 @@ bCurrentDrive	db	?
 bBootDrive	db	?
 initdos	ends
 
+initdev	struct
+pNextDevice	dd	?
+wFlags		dw	?
+pStrategy	dw	?
+pInterrupt	dw	?
+sName		db	8 dup (?)
+initdev ends
+
 krnlstart:
 entry:
 
 ;************************************************************       
-; moves the INIT part of kernel.sys to high memory (~9000:0)
+; moves the INIT part of DOSKENL to high memory (~9000:0)
 ; then jumps there
 ; to aid debugging, some '123' messages are output
 ; this area is discardable and used as temporary PSP for the
 ; init sequence
 ;************************************************************       
 
-                .8086                ; (keep initial entry compatible)
+                .386                   ; (keep initial entry compatible)
 
-public realentry
-realentry:                              ; execution continues here
-	push cs
-	pop ds
-	jmp     INIT_TEXT:kernel_start
-
+;public realentry
+;realentry:                              ; execution continues here
+	org 0h
+	jmp near ptr kernel_start
 
 	db 0C0h - ($ - PSP) dup (090h)	; (nop opcodes) magic offset (used by exeflat)
 
@@ -110,36 +117,183 @@ INIT_TEXT	segment
 
                 extern  _FreeDOSmain : near
                 
+
                 ;
                 ; kernel start-up
                 ;
+		; 1. Search and initialize XMS
+		; 2. Move init segment high
+		; 3. Move HMA segment to HMA
+		; 4. Jump to C init part
+		;
 kernel_start:
-
-        sti		; FreeDOS kernel disables interupt to configure stack, but DOSKRNL is not.
+	; FreeDOS kernel disables interupt to configure stack, but DOSKRNL is not, 
+	; because stack configured already.
+        sti
 	cld
+
 
 	ifdef	DEBUG
                 push ax
                 push bx
-                pushf              
+                pushf
+		
+		xor	bx, bx		; video page 0
+
+		push cs
+		pop ds
+		
+		mov	si, offset szCS
+		call	print
+		
+		mov ax, cs
+		call WriteHex
+		
+		mov	si, offset szSSBP
+		call	print
+
+		mov ax, ss
+		mov cx, bp
+		call WritePtr
+
+		mov	si, offset szMemStart
+		call	print
+		
+		mov ax, [bp].initdos.wMemStart
+		call WriteHexCr
+
+		mov	si, offset szMemSize
+		call	print
+
+		mov ax, [bp].initdos.wMemSize
+		call WriteHexCr
+
+		mov	si, offset szInitSize
+		call	print
+
+		mov ax, [bp].initdos.wInitSize
+		call WriteHexCr
+
+		mov	si, offset szBREAK
+		call	print
+
+		mov ax, [bp].initdos.wBreak
+		call WriteHex
+
+		mov	si, offset szDOS
+		call	print
+
+		mov ax, [bp].initdos.wDOS
+		call WriteHexCr
+
+		mov ax, word ptr [bp].initdos.pDevices+2
+		mov cx, word ptr [bp].initdos.pDevices
+		call WritePtr
+
+		lds si,[bp].initdos.pDevices
+		call print
+		call WriteCr
+
+		mov ax, word ptr [bp].initdos.pShell+2
+		mov cx, word ptr [bp].initdos.pShell
+		call WritePtr
+		
+		lds si,[bp].initdos.pShell
+		call print
+		call WriteCr
+
+		mov ax, word ptr [bp].initdos.pShellArgs+2
+		mov cx, word ptr [bp].initdos.pShellArgs
+		call WritePtr
+
+		lds si,[bp].initdos.pShellArgs
+		call print
+		call WriteCr
+
+		mov ax, word ptr [bp].initdos.pVDDs+2
+		mov cx, word ptr [bp].initdos.pVDDs
+		call WritePtr
+
+		cmp [bp].initdos.pVDDs+2, 0ffffh			; HMA, no A20 enabled yet
+		jz skipdd
+
+		; Search loop for devices
+		lds si,[bp].initdos.pVDDs
+loopdd:		push si
+		call	WriteDD
+		pop si
+
+		push si
+		add si, initdev.sName
+
+		push cs
+		pop es
+		mov di, offset sXMSDEVICE
+
+		mov cx, 8  ; selects the length of the first string as maximum for comparison
+		repe cmpsb         ; comparison of CX number of bytes
+		jne ifWrong       ; checks ZERO flag
+		pop si
+
+                ; pascal execrh(request far *rhp, struct dhdr far *dhp);
+		mov byte ptr [_CharReqHdr+0], 22	; packet size
+		mov byte ptr [_CharReqHdr+1], 0		; unit code
+		mov byte ptr [_CharReqHdr+2], 0		; INIT command code
+		mov word ptr [_CharReqHdr+3], 0		; Status
+		push cs		; rhp
+		push offset _CharReqHdr
+		push ds		; dhp
+		push si
+		extern EXECRH:near
+		call EXECRH
+		
+		; 1) init XMS
+		; 2) init HMA
+		
+		jmp skipdd
+
+ifWrong:	pop si
+		cmp word ptr ds:[si]+2, 0ffffh			; end of list or HMA, no A20 enabled yet
+		jz skipdd
+		lds si, dword ptr ds:[si].initdev.pNextDevice
+		jmp loopdd
+
+skipdd:
+
+		xor	ax,ax
+		mov	al, [bp].initdos.bCurrentDrive
+		call WriteHexCr
+		
+		xor	ax,ax
+		mov	al, [bp].initdos.bBootDrive
+		call WriteHexCr
+
                 mov ax, 0e31h           ; '1' Tracecode - kernel entered
-                mov bx, 00f0h                                        
                 int 010h
+		
+		xor ax,ax
+		int 16h
+		
                 popf
                 pop bx
                 pop ax
 	endif
+	
+	push cs
+	pop ds
 
-	assume ds:LGROUP
 	mov	bl, [bp].initdos.bBootDrive
-	mov     byte ptr [LGROUP:_BootDrive],bl ; tell where we came from
-	assume ds:nothing
+	mov     byte ptr ds:_BootDrive,bl ; tell where we came from
 
 	; Calc start of new init segment
 	mov	ax, [bp].initdos.wMemSize
 	sub	ax, [bp].initdos.wInitSize	; Cut init structure
 	add	ax, [bp].initdos.wMemStart	; Add start segment
-
+	
+	; 1. move init segment to high conventional memory
+	; 2. move hma segment to HMA or leave as is (is we need move hma segment to higher
+	;    conventional memory as FreeDOS does?)
+	if 0
                 mov     cl,6
                 shl     ax,cl           ; convert kb to para
                 mov     dx,15 + INITSIZE
@@ -147,6 +301,7 @@ kernel_start:
                 shr     dx,cl
                 sub     ax,dx
                 mov     es,ax
+
                 mov     dx,INITTEXTSIZE ; para aligned
                 shr     dx,cl
                 add     ax,dx
@@ -154,9 +309,9 @@ kernel_start:
                 mov     ax,cs
                 mov     dx,__HMATextEnd ; para aligned
                 shr     dx,cl
-%ifdef WATCOM
+
                 add     ax,dx
-%endif
+
                 mov     ds,ax
                 mov     si,-2 + INITSIZE; word aligned
                 lea     cx,[si+2]
@@ -177,13 +332,29 @@ kernel_start:
                 mov     di,si
                 shr     cx,1
                 rep     movsw
+
+		ifdef DEBUG
+                push bx
+                pushf              
+                mov ax, 0e32h           ; '2' Tracecode - kernel entered
+                mov bx, 00f0h                                        
+                int 010h
+		xor ax,ax
+		int 16h
+                popf
+                pop bx
+		endif
+
+	endif
                 
                 cld
+		assume es:INIT_TEXT
                 push    es
-                mov     ax,cont
+                mov     ax,offset INIT_TEXT:cont
+		assume es:nothing
                 push    ax
                 retf
-		
+
 cont:           ; Now set up call frame
                 mov     ds,[cs:_INIT_DGROUP]
                 mov     bp,sp           ; and set up stack frame for c
@@ -194,6 +365,8 @@ cont:           ; Now set up call frame
                 mov ax, 0e33h           ; '3' Tracecode - kernel entered
                 mov bx, 00f0h                                        
                 int 010h
+		xor ax,ax
+		int 16h
                 popf
                 pop bx
 		endif
@@ -203,6 +376,74 @@ cont:           ; Now set up call frame
 
            jmp     _FreeDOSmain
 
+szCS		db	"DOSKRNL DEBUG", 10, 13, "CS: ", 0
+szSSBP		db	" SS:BP: ", 0
+szMemStart	db	"First free memory segment: ", 0
+szMemSize	db	"Free memory size (paragraphs): ", 0
+szInitSize	db	"Init structure size (paragraphs): ", 0
+szBREAK		db	"BREAK flag: ", 0
+szDOS		db	" DOS flag: ", 0
+sXMSDEVICE	db	"XMSXXXX0"
+
+WriteDD:	mov ax, word ptr [si].initdev.pNextDevice+2
+		mov cx, word ptr [si].initdev.pNextDevice
+		call WritePtr
+		
+		mov ax, [si].initdev.wFlags
+		call WriteHexCr
+
+		mov ax, [si].initdev.pStrategy
+		call WriteHexCr
+
+		mov ax, [si].initdev.pInterrupt
+		call WriteHexCr
+		
+		test [si].initdev.wFlags, 8000h
+		jz WriteDDExit			; Block device
+		add si, initdev.sName		; Not shure if this ok, but all tested configurations ends with NULL
+		
+		call print
+		call WriteCR
+		;sub si, initdev.sName
+WriteDDExit:	ret
+
+WritePtr:	call WriteHex
+                mov ax, 0e3ah
+                int 010h
+		mov ax, cx
+WriteHexCr:
+		call	WriteHex
+WriteCr:	mov	ax, 0e0dh
+		int	10h
+		mov	al, 0ah
+		int	10h
+		ret
+		
+WriteHex:
+		mov	dl,10h
+		push	ax
+		mov	al,ah
+		call	HexByte
+		pop	ax
+HexByte:	xor	ah,ah
+		div	dl
+		add	ax,3030h
+		mov	cl,ah
+		mov	ah,0Eh
+		call	HexNibble
+		mov	al,cl
+HexNibble:	cmp	al,39h
+		jbe	short HexExit
+		add	al,7
+HexExit:	int	10h
+		ret
+
+printchar:	mov	ah, 0eh		; print it
+		int	10h		; via TTY mode
+print:		lodsb			; get token
+		cmp	al, 0		; end of string?
+		jne	printchar	; until done
+		ret			; return to caller
 
 INIT_TEXT	ENDS
 
@@ -232,7 +473,7 @@ _nul_strtgy:
 _nul_intr:
                 push    es
                 push    bx
-                mov     bx,LGROUP
+                mov     bx,_IO_TEXT;LGROUP
                 mov     es,bx
                 les     bx, dword ptr [es:_ReqPktPtr]  ;es:bx--> rqheadr
                 cmp     byte ptr [es:bx+2],4    ;if read, set 0 read
@@ -329,7 +570,7 @@ _sfthead        dd      0               ; 0004 System File Table head
                 public  _clock
 _clock          dd      0               ; 0008 CLOCK$ device
                 public  _syscon
-_syscon         dw      LGROUP:_con_dev,LGROUP ; 000c console device
+_syscon         dw      _IO_FIXED_DATA:_con_dev,_IO_FIXED_DATA ; 000c console device ; LGROUP
                 public  _maxsecsize
 _maxsecsize     dw      512             ; 0010 maximum bytes/sector of any block device
                 dd      0               ; 0012 pointer to buffers info structure
@@ -346,7 +587,7 @@ _lastdrive      db      0               ; 0021 value of last drive
                 public  _nul_dev
 _nul_dev:           ; 0022 device chain root
                 extern  _con_dev: near
-                dw      LGROUP:_con_dev, LGROUP
+                dw      _IO_FIXED_DATA:_con_dev, _IO_FIXED_DATA;LGROUP
                                         ; next is con_dev at init time.  
                 dw      8004h           ; attributes = char device, NUL bit set
                 dw      _nul_strtgy
@@ -846,9 +1087,8 @@ begin_hma:
 
 ; to minimize relocations
                 public _DGROUP_
-_DGROUP_        dw DGROUP
+_DGROUP_        dw _FIXED_DATA;DGROUP
 
-;%ifdef WATCOM
 ;               32 bit multiplication + division
 public __U4M
 __U4M:
@@ -856,7 +1096,7 @@ __U4M:
 public __U4D
 __U4D:
                 LDIVMODU
-;%endif
+
 
 
                 db 0d0h - ($-begin_hma) dup (0)
@@ -875,8 +1115,8 @@ HMA_TEXT_END	ENDS
 ; The default stack (_TEXT:0) will overwrite the data area, so I create a dummy
 ; stack here to ease debugging. -- ror4
 
-_STACK	segment public 'STACK'
-_STACK	ENDS
+;_STACK	segment public 'STACK'
+;_STACK	ENDS
 
 
     
@@ -1125,12 +1365,12 @@ _int24_handler: mov     al,FAIL
 
 _LOWTEXT	segment 
                 public _TEXT_DGROUP
-_TEXT_DGROUP dw DGROUP
+_TEXT_DGROUP dw _FIXED_DATA ;DGROUP
 _LOWTEXT	ENDS
 
 INIT_TEXT	segment 
                 public _INIT_DGROUP
-_INIT_DGROUP dw DGROUP
+_INIT_DGROUP dw _FIXED_DATA;DGROUP
 INIT_TEXT	ENDS
 
 CONST	ENDS

@@ -31,7 +31,6 @@
 #include "date.h"
 #include "globals.h"
 
-#if 0
 
 const UWORD days[2][13] = {
   {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365},
@@ -67,24 +66,109 @@ UWORD DaysFromYearMonthDay(UWORD Year, UWORD Month, UWORD DayOfMonth)
       + ((Year - 1980) * 365) + ((Year - 1980 + 3) / 4);
 
 }
-#endif
+
+/* common - call the clock driver */
+void ExecuteClockDriverRequest(BYTE command)
+{
+  BinaryCharIO(&clock, sizeof(struct ClockRecord), &ClkRecord, command);
+}
 
 void DosGetTime(struct dostime *dt)
 {
+  ExecuteClockDriverRequest(C_INPUT);
+
+  if (ClkReqHdr.r_status & S_ERROR)
+    return;
+
+  dt->hour = ClkRecord.clkHours;
+  dt->minute = ClkRecord.clkMinutes;
+  dt->second = ClkRecord.clkSeconds;
+  dt->hundredth = ClkRecord.clkHundredths;
 }
 
 int DosSetTime(const struct dostime *dt)
 {
+  if (dt->hour > 23 || dt->minute > 59 ||
+      dt->second > 59 || dt->hundredth > 99)
+     return DE_INVLDDATA;
+ 
+  /* for ClkRecord.clkDays */
+  ExecuteClockDriverRequest(C_INPUT);
+
+  ClkRecord.clkHours = dt->hour;
+  ClkRecord.clkMinutes = dt->minute;
+  ClkRecord.clkSeconds = dt->second;
+  ClkRecord.clkHundredths = dt->hundredth;
+
+  ExecuteClockDriverRequest(C_OUTPUT);
+
+  if (ClkReqHdr.r_status & S_ERROR)
+    return char_error(&ClkReqHdr, (struct dhdr FAR *)clock);
   return SUCCESS;
 }
 
 unsigned char DosGetDate(struct dosdate *dd)
 {
-  return 0;
+  UWORD c;
+  const UWORD *pdays;
+  UWORD Year, Month;
+
+  ExecuteClockDriverRequest(C_INPUT);
+
+  if (ClkReqHdr.r_status & S_ERROR)
+    return 0;
+
+  for (Year = 1980, c = ClkRecord.clkDays;;)
+  {
+    pdays = is_leap_year_monthdays(Year);
+    if (c >= pdays[12])
+    {
+      ++Year;
+      c -= pdays[12];
+    }
+    else
+      break;
+  }
+
+  /* c contains the days left and count the number of days for    */
+  /* that year.  Use this to index the table.                     */
+  Month = 1;
+  while (c >= pdays[Month])
+  {
+    ++Month;
+  }
+
+  dd->year = Year;
+  dd->month = Month;
+  dd->monthday = c - pdays[Month - 1] + 1;
+
+  /* Day of week is simple. Take mod 7, add 2 (for Tuesday        */
+  /* 1-1-80) and take mod again                                   */
+
+  return (ClkRecord.clkDays + 2) % 7;
 }
 
 int DosSetDate(const struct dosdate *dd)
 {
+  UWORD Year = dd->year;
+  UWORD Month = dd->month;
+  UWORD DayOfMonth = dd->monthday;
+  const UWORD *pdays = is_leap_year_monthdays(Year);
+
+  if (Year < 1980 || Year > 2099
+      || Month < 1 || Month > 12
+      || DayOfMonth < 1
+      || DayOfMonth > pdays[Month] - pdays[Month - 1])
+    return DE_INVLDDATA;
+
+  ExecuteClockDriverRequest(C_INPUT);
+
+  ClkRecord.clkDays = DaysFromYearMonthDay(Year, Month, DayOfMonth);
+
+  ExecuteClockDriverRequest(C_OUTPUT);
+
+  if (ClkReqHdr.r_status & S_ERROR)
+    return char_error(&ClkReqHdr, (struct dhdr FAR *)clock);
   return SUCCESS;
 }
 

@@ -15,7 +15,7 @@ srcfiles  = $(p)kernel$(e) $(p)entry$(e) $(p)io$(e) $(p)console$(e) $(p)serial$(
 			$(p)prf$(e) $(p)misc$(e) $(p)strings$(e) $(p)syspack$(e) $(p)lfnapi$(e) $(p)os2blockio$(e) &
 			$(p)main$(e) $(p)initoem$(e) $(p)inithma$(e) $(p)dyninit$(e) $(p)iprf$(e) $(p)initdisk$(e) &
 			$(p)initclk$(e) $(p)floppy$(e) $(p)rdpcclk$(e) $(p)wrpcclk$(e) $(p)wratclk$(e) $(p)os2fs$(e) $(p)os2dir$(e)
-
+COM=1
 #$(p)cpu$(e) $(p)iasmsupt$(e) $(p)memdisk$(e) 
 
 # FAT support not required for DOSKRNL
@@ -35,7 +35,7 @@ srcfiles  = $(p)kernel$(e) $(p)entry$(e) $(p)io$(e) $(p)console$(e) $(p)serial$(
 
 NOLIBS	= 1
 JWASM	= 1
-ADD_ASMOPT = -I=$(MYDIR)..$(SEP)hdr -DWIN31SUPPORT
+ADD_ASMOPT = -I=$(MYDIR)..$(SEP)hdr -DWIN31SUPPORT -DDEBUG
 ADD_COPT = -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntHMA_TEXT -DWIN31SUPPORT
 
 #INITCFLAGS=$(ALLCFLAGS)-ntINIT_TEXT-gTGROUP-ndI
@@ -54,33 +54,34 @@ install_add: $(DEST)$(SEP)$(PROJ)
 $(DEST)$(SEP)$(PROJ): $(PATH)$(PROJ).exe
  @$(SAY) INST     $^. $(LOG)
  $(BLD)host$(SEP)$(%HOST)$(SEP)$(RELDIR)..$(SEP)utils$(SEP)exeflat.exe $< $^@ 0x60
+# -S0x10 -S0x7d -S0x79
 
 $(PATH)os2config.$(O): $(MYDIR)os2config.c
  @$(SAY) CC       $^. $(LOG)
- $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gTGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
+ $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gDGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
 $(PATH)initclk.$(O): $(MYDIR)initclk.c
  @$(SAY) CC       $^. $(LOG)
- $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gTGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
+ $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gDGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
 $(PATH)initoem.$(O): $(MYDIR)initoem.c
  @$(SAY) CC       $^. $(LOG)
- $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gTGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
+ $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gDGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
 $(PATH)main.$(O): $(MYDIR)main.c
  @$(SAY) CC       $^. $(LOG)
- $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gTGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
+ $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gDGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
 $(PATH)inithma.$(O): $(MYDIR)inithma.c
  @$(SAY) CC       $^. $(LOG)
- $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gTGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
+ $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gDGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
 $(PATH)dyninit.$(O): $(MYDIR)dyninit.c
  @$(SAY) CC       $^. $(LOG)
- $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gTGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
+ $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gDGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
 $(PATH)initdisk.$(O): $(MYDIR)initdisk.c
  @$(SAY) CC       $^. $(LOG)
- $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gTGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
+ $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-gDGROUP-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
 

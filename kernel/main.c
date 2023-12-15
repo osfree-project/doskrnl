@@ -60,7 +60,7 @@ struct lol FAR *LoL = &DATASTART;
 
 VOID ASMCFUNC FreeDOSmain(void)
 {
-  unsigned char drv;
+  //unsigned char drv;
 
 #ifdef _MSC_VER
   extern FAR prn_dev;
@@ -71,10 +71,13 @@ VOID ASMCFUNC FreeDOSmain(void)
   /* clear the Init BSS area (what normally the RTL does */
   memset(_ib_start, 0, _ib_end - _ib_start);
 
+#if 0
+  // not required for DOSKRNL
   drv = LoL->BootDrive + 1;
   if (drv >= 0x80)
     drv = 3; /* C: */
   LoL->BootDrive = drv;
+#endif
 
   /* init master environment start */
   *master_env = 0;
