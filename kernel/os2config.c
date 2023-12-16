@@ -373,57 +373,6 @@ STATIC VOID mumcb_init(UCOUNT seg, UWORD size)
 #endif
 
 
-/*
-    get BIOS key with timeout:
-
-    timeout < 0: no timeout
-    timeout = 0: poll only once
-    timeout > 0: timeout in seconds
-
-    return
-            0xffff : no key hit
-
-            0xHH.. : scancode in upper  half
-            0x..LL : asciicode in lower half
-*/
-#define GetBiosTime() peekl(0, 0x46c)
-
-UWORD GetBiosKey(int timeout)
-{
-  iregs r;
-
-  ULONG startTime = GetBiosTime();
-
-  if (timeout >= 0)
-  {
-    do
-    {
-      /* optionally HLT here - timer will IRQ even if no keypress */
-      r.a.x = 0x0100;             /* are there keys available ? */
-      init_call_intr(0x16, &r);
-      if (!(r.flags & FLG_ZERO)) {
-        r.a.x = 0x0000;
-        init_call_intr(0x16, &r); /* there is a key, so better fetch it! */
-        return r.a.x;
-      }
-    } while ((unsigned)(GetBiosTime() - startTime) < timeout * 18u);
-    return 0xffff;
-  }
-
-  /* blocking wait (timeout < 0): fetch it */
-#if 0
-  do {
-      /* optionally HLT here */
-      r.a.x = 0x0100;
-      init_call_intr(0x16, &r);
-  } while (r.flags & FLG_ZERO);
-#endif
-  r.a.x = 0x0000;
-  init_call_intr(0x16, &r);
-  return r.a.x;
-}
-
-
 
 #ifdef I86
 #if 0

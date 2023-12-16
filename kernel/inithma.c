@@ -42,7 +42,7 @@
 
     after each loaded DEVICE=SOMETHING.SYS, try to request the HMA
     (XMS function 0x01). 
-    if no XMS driver detected, during ONFIG.SYS processing,
+    if no XMS driver detected, during CONFIG.SYS processing,
     create a dummy VDISK entry in high memory
     
     this works with

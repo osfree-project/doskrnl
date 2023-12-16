@@ -14,7 +14,8 @@ srcfiles  = $(p)kernel$(e) $(p)entry$(e) $(p)io$(e) $(p)console$(e) $(p)serial$(
 			$(p)inthndlr$(e) $(p)ioctl$(e) $(p)memmgr$(e) $(p)task$(e) $(p)newstuff$(e) $(p)nls$(e) $(p)network$(e) &
 			$(p)prf$(e) $(p)misc$(e) $(p)strings$(e) $(p)syspack$(e) $(p)lfnapi$(e) $(p)os2blockio$(e) &
 			$(p)main$(e) $(p)initoem$(e) $(p)inithma$(e) $(p)dyninit$(e) $(p)iprf$(e) $(p)initdisk$(e) &
-			$(p)initclk$(e) $(p)floppy$(e) $(p)rdpcclk$(e) $(p)wrpcclk$(e) $(p)wratclk$(e) $(p)os2fs$(e) $(p)os2dir$(e)
+			$(p)initclk$(e) $(p)floppy$(e) $(p)rdpcclk$(e) $(p)wrpcclk$(e) $(p)wratclk$(e) $(p)os2fs$(e) $(p)os2dir$(e) &
+			$(p)inittextend$(e)
 COM=1
 #$(p)cpu$(e) $(p)iasmsupt$(e) $(p)memdisk$(e) 
 

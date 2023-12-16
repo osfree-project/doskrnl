@@ -36,6 +36,25 @@
 PSP	segment 
 
                 extern  _ReqPktPtr : far
+		extern EXECRH:near
+                extern  _FreeDOSmain : near
+                extern GenStrategy: near
+                extern  _con_dev: near
+                extern  _os_release: near
+                extern  reloc_call_int2f_handler: near
+                extern  reloc_call_int20_handler: near
+                extern  reloc_call_int21_handler: near
+                extern  reloc_call_low_int25_handler: near
+                extern  reloc_call_low_int26_handler: near
+                extern  reloc_call_int27_handler: near
+                extern  reloc_call_int0_handler: near
+                extern  reloc_call_int6_handler: near
+                extern  reloc_call_int19_handler: near
+                extern  reloc_call_cpm_entry: near
+                extern  _blk_driver: near
+                extern  _clk_driver: near
+                extern  _reloc_call_CharMapSrvc: near
+                extern reloc_call_p_0: near
 
 STACK_SIZE      equ     384/2           ; stack allocated in words
 
@@ -115,7 +134,6 @@ PSP	ENDS
 
 INIT_TEXT	segment
 
-                extern  _FreeDOSmain : near
                 
 
                 ;
@@ -244,7 +262,6 @@ loopdd:		push si
 		push offset _CharReqHdr
 		push ds		; dhp
 		push si
-		extern EXECRH:near
 		call EXECRH
 		
 		; 1) init XMS
@@ -285,12 +302,39 @@ skipdd:
 	mov	bl, [bp].initdos.bBootDrive
 	mov     byte ptr ds:_BootDrive,bl ; tell where we came from
 
-	; Calc start of new init segment
-	mov	ax, [bp].initdos.wMemSize
-	sub	ax, [bp].initdos.wInitSize	; Cut init structure
-	add	ax, [bp].initdos.wMemStart	; Add start segment
-	
-	; 1. move init segment to high conventional memory
+	; Move INIT_TEXT segment up
+	mov	si, __InitTextStart
+	mov	di, si
+	mov	ax, __InitTextEnd		; INIT segment size
+	sub	ax, __InitTextStart+15
+	mov	cx, ax				; Save for movsb
+	shr	ax, 4				; In paragraphs
+	add	ax, [bp].initdos.wMemSize	; Free Memory size (paragraphs)
+	sub	ax, [bp].initdos.wInitSize	; Cut init structure size (paragraphs)
+	add	ax, [bp].initdos.wMemStart	; Add start segment of free memory
+	mov	es, ax				; Destination segment
+        std                     ; if there's overlap only std is safe
+        rep     movsb
+	cld
+
+        push    es
+        mov     ax, cont
+	push    ax
+        retf
+
+cont:           ; Now set up call frame
+		ifdef DEBUG
+                push bx
+                pushf              
+                mov ax, 0e32h           ; '2' Tracecode - kernel entered
+                mov bx, 00f0h                                        
+                int 010h
+		xor ax,ax
+		int 16h
+                popf
+                pop bx
+		endif
+
 	; 2. move hma segment to HMA or leave as is (is we need move hma segment to higher
 	;    conventional memory as FreeDOS does?)
 	if 0
@@ -355,7 +399,7 @@ skipdd:
                 push    ax
                 retf
 
-cont:           ; Now set up call frame
+cont2:           ; Now set up call frame
                 mov     ds,[cs:_INIT_DGROUP]
                 mov     bp,sp           ; and set up stack frame for c
 
@@ -462,7 +506,6 @@ CONST	segment
                 ; NUL device strategy
                 ;
                 public  _nul_strtgy
-                extern GenStrategy: near
 _nul_strtgy:
                 jmp short GenStrategy
 
@@ -586,7 +629,6 @@ _nblkdev        db      0               ; 0020 number of block devices
 _lastdrive      db      0               ; 0021 value of last drive
                 public  _nul_dev
 _nul_dev:           ; 0022 device chain root
-                extern  _con_dev: near
                 dw      _IO_FIXED_DATA:_con_dev, _IO_FIXED_DATA;LGROUP
                                         ; next is con_dev at init time.  
                 dw      8004h           ; attributes = char device, NUL bit set
@@ -657,7 +699,6 @@ _rev_number     db      0
 _version_flags  db      0
 
                 public  os_release
-                extern  _os_release: near
 os_release      dw      _os_release
 
 IFDEF WIN31SUPPORT
@@ -1144,7 +1185,6 @@ _initforceEnableA20:
 __HMARelocationTableStart:   
 
                 public  _int2f_handler
-                extern  reloc_call_int2f_handler: near
 _int2f_handler:
 		db	0eah			; jmp 0:reloc_call_int2f_handler
 		dw	offset reloc_call_int2f_handler
@@ -1152,7 +1192,6 @@ _int2f_handler:
                 call near ptr forceEnableA20
 
                 public  _int20_handler
-                extern  reloc_call_int20_handler: near
 _int20_handler:
 		db	0eah			;jmp 0:reloc_call_int20_handler
 		dw	offset reloc_call_int20_handler
@@ -1160,7 +1199,6 @@ _int20_handler:
                 call near ptr forceEnableA20
 
                 public  _int21_handler
-                extern  reloc_call_int21_handler: near
 _int21_handler: 
 		db	0eah			;jmp 0:reloc_call_int21_handler
 		dw	offset reloc_call_int21_handler
@@ -1169,7 +1207,6 @@ _int21_handler:
 
 
                 public  _low_int25_handler
-                extern  reloc_call_low_int25_handler: near
 _low_int25_handler: 
 		db	0eah			; jmp 0:reloc_call_low_int25_handler
 		dw	offset reloc_call_low_int25_handler
@@ -1177,7 +1214,6 @@ _low_int25_handler:
                 call near ptr forceEnableA20
 
                 public  _low_int26_handler
-                extern  reloc_call_low_int26_handler: near
 _low_int26_handler:
 		db	0eah			;jmp 0:reloc_call_low_int26_handler
 		dw	offset reloc_call_low_int26_handler
@@ -1185,7 +1221,6 @@ _low_int26_handler:
                 call near ptr forceEnableA20
 
                 public  _int27_handler
-                extern  reloc_call_int27_handler: near
 _int27_handler: 
 		db	0eah			;jmp 0:reloc_call_int27_handler
 		dw	offset reloc_call_int27_handler
@@ -1193,7 +1228,6 @@ _int27_handler:
                 call near ptr forceEnableA20
 
                 public  _int0_handler
-                extern  reloc_call_int0_handler: near
 _int0_handler:  
 		db	0eah			;jmp 0:reloc_call_int0_handler
 		dw	offset reloc_call_int0_handler
@@ -1201,7 +1235,6 @@ _int0_handler:
                 call near ptr forceEnableA20
 
                 public  _int6_handler
-                extern  reloc_call_int6_handler: near
 _int6_handler:  
 		db	0eah			;jmp 0:reloc_call_int6_handler
 		dw	offset reloc_call_int6_handler
@@ -1209,7 +1242,6 @@ _int6_handler:
                 call near ptr forceEnableA20
 
                 public  _int19_handler
-                extern  reloc_call_int19_handler: near
 _int19_handler: 
 		db	0eah			;jmp 0:reloc_call_int19_handler
 		dw	offset reloc_call_int19_handler
@@ -1217,7 +1249,6 @@ _int19_handler:
                 call near ptr forceEnableA20
 
                 public  _cpm_entry
-                extern  reloc_call_cpm_entry: near
 _cpm_entry:     
 		db	0eah			;jmp 0:reloc_call_cpm_entry
 		dw	offset reloc_call_cpm_entry
@@ -1225,7 +1256,6 @@ _cpm_entry:
                 call near ptr forceEnableA20
 
                 public  _reloc_call_blk_driver
-                extern  _blk_driver: near
 _reloc_call_blk_driver:
                 db	0eah			;jmp 0:_blk_driver
 		dw	offset _blk_driver
@@ -1233,7 +1263,6 @@ _reloc_call_blk_driver:
                 call near ptr forceEnableA20
 
                 public  _reloc_call_clk_driver
-                extern  _clk_driver: near
 _reloc_call_clk_driver:
                 db	0eah			;jmp 0:_clk_driver
 		dw	offset _clk_driver
@@ -1241,7 +1270,6 @@ _reloc_call_clk_driver:
                 call near ptr forceEnableA20
 
                 public  _CharMapSrvc ; in _DATA (see AARD)
-                extern  _reloc_call_CharMapSrvc: near
 _CharMapSrvc:   
 		db	0eah			;jmp 0:_reloc_call_CharMapSrvc
 		dw	offset _reloc_call_CharMapSrvc
@@ -1249,7 +1277,6 @@ _CharMapSrvc:
                 call near ptr forceEnableA20
 
                 public _init_call_p_0
-                extern reloc_call_p_0: near
 _init_call_p_0: 
 		db	0eah			;jmp  0:reloc_call_p_0
 		dw	offset reloc_call_p_0

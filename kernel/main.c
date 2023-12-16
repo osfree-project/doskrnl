@@ -44,46 +44,25 @@ STATIC VOID InitSerialPorts(VOID);
 //STATIC void CheckContinueBootFromHarddisk(void);
 STATIC void setup_int_vectors(void);
 
-#ifdef _MSC_VER
-BYTE _acrtused = 0;
-
-__segment DosDataSeg = 0;       /* serves for all references to the DOS DATA segment 
-                                   necessary for MSC+our funny linking model
-                                 */
-__segment DosTextSeg = 0;
-
-#endif
-
 struct lol FAR *LoL = &DATASTART;
 
-//struct _KernelConfig InitKernelConfig = { -1 };
 
 VOID ASMCFUNC FreeDOSmain(void)
 {
-  //unsigned char drv;
 
-#ifdef _MSC_VER
-  extern FAR prn_dev;
-  DosDataSeg = (__segment) & DATASTART;
-  DosTextSeg = (__segment) & prn_dev;
-#endif
 
   /* clear the Init BSS area (what normally the RTL does */
   memset(_ib_start, 0, _ib_end - _ib_start);
 
-#if 0
-  // not required for DOSKRNL
-  drv = LoL->BootDrive + 1;
-  if (drv >= 0x80)
-    drv = 3; /* C: */
-  LoL->BootDrive = drv;
-#endif
+  /* Already zeroed. Why zero it again? */
 
+#if 0
   /* init master environment start */
   *master_env = 0;
   master_env[1] = 0;
   master_env[2] = 0;
   master_env[3] = 0;
+#endif
 
   /* install DOS API and other interrupt service routines, basic kernel functionality works */
   setup_int_vectors();

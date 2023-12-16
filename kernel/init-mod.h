@@ -137,7 +137,6 @@ void FAR * KernelAllocPara(size_t nPara, char type, char *name, int mode);
 char *strcat(char * d, const char * s);
 BYTE * GetStringArg(BYTE * pLine, BYTE * pszString);
 void DoInstall(void);
-UWORD GetBiosKey(int timeout);
 
 /* diskinit.c */
 COUNT dsk_init(VOID);
