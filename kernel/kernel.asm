@@ -108,25 +108,60 @@ krnlstart:
 entry:
 
 ;************************************************************       
-; moves the INIT part of DOSKENL to high memory (~9000:0)
+; moves the INIT part of DOSKENL to high conventional memory (~9000:0)
 ; then jumps there
-; to aid debugging, some '123' messages are output
 ; this area is discardable and used as temporary PSP for the
 ; init sequence
 ;************************************************************       
 
-                .386                   ; (keep initial entry compatible)
+                .386                   ; We executed only on 80386+, so it is ok
 
-;public realentry
-;realentry:                              ; execution continues here
-	org 0h
-	jmp near ptr kernel_start
+		org 0h
+		; FreeDOS kernel disables interupt to configure stack, but DOSKRNL is not, 
+		; because stack configured already.
+		sti
+		cld
+		push	cs
+		pop	ds
 
-	db 0C0h - ($ - PSP) dup (090h)	; (nop opcodes) magic offset (used by exeflat)
+		mov	FixedData, ds
 
-beyond_entry   db   256-(beyond_entry-entry) dup (0)
-                                        ; scratch area for data (DOS_PSP)
-_master_env equ $ - 128
+		; Move INIT_TEXT segment up
+		mov	si, __InitTextStart		; Source offset
+		mov	di, INIT_TEXT:kernel_start	; Destination offset
+		
+		mov	ax, __InitTextEnd		; INIT segment size
+		sub	ax, __InitTextStart
+		mov	cx, ax				; Size in bytes for movsb
+		add	ax, 15
+		shr	ax, 4
+		mov	dx, ax				; Size In paragraphs
+		
+		; @todo add checks for correct data. And PANIC if incorrect.
+		mov	ax, [bp].initdos.wMemStart	; Start of free memory (segment)
+		add	ax, [bp].initdos.wMemSize	; Add free Memory size (paragraphs)
+		sub	ax, [bp].initdos.wInitSize	; Cut init structure size (paragraphs)
+		sub	ax, dx				; Cut Init segment size (paragraphs)
+		mov	es, ax				; Destination segment
+
+		; @todo fix for overlap???
+		;std                     		; if there's overlap only std is safe
+		rep     movsb
+		;cld
+
+		; Jump to new location
+		push    es
+		mov     ax, INIT_TEXT:cont
+		push    ax
+		retf
+	
+		; @todo insert 0:80h check here or inititalize it later with zeroes
+
+		;db 080h - ($ - PSP) dup (090h)	; (nop opcodes) magic offset (used by exeflat)
+
+beyond_entry	db   256-(beyond_entry-entry) dup (0)  ; scratch area for data (DOS_PSP)
+	       
+_master_env	equ $ - 128
 public _master_env
 
 PSP	ENDS
@@ -134,47 +169,53 @@ PSP	ENDS
 
 INIT_TEXT	segment
 
+		org 0
+		assume cs:INIT_TEXT
                 
-
                 ;
                 ; kernel start-up
                 ;
 		; 1. Search and initialize XMS
-		; 2. Move init segment high
-		; 3. Move HMA segment to HMA
-		; 4. Jump to C init part
+		; 2. Move HMA segment to HMA
+		; 3. Jump to C init part
 		;
 kernel_start:
-	; FreeDOS kernel disables interupt to configure stack, but DOSKRNL is not, 
-	; because stack configured already.
-        sti
-	cld
+FixedData	dw	?		; _FIXED_DATA segment
 
+		ifdef	DEBUG
+szCS		db	"DOSKRNL DEBUG", 10, 13, "CS: ", 0
+szSSBP		db	" SS:BP: ", 0
+szMemStart	db	"First free memory segment: ", 0
+szMemSize	db	"Free memory size (paragraphs): ", 0
+szInitSize	db	"Init structure size (paragraphs): ", 0
+szBREAK		db	"BREAK flag: ", 0
+szDOS		db	" DOS flag: ", 0
+		endif; DEBUG
+sXMSDEVICE	db	"XMSXXXX0"
 
-	ifdef	DEBUG
-                push ax
-                push bx
-                pushf
-		
-		xor	bx, bx		; video page 0
-
+cont:
 		push cs
 		pop ds
+		assume ds:INIT_TEXT
+
+
+		ifdef	DEBUG
+		xor	bx, bx		; video page 0
 		
-		mov	si, offset szCS
+		mov	si, offset INIT_TEXT:szCS
 		call	print
 		
 		mov ax, cs
 		call WriteHex
 		
-		mov	si, offset szSSBP
+		mov	si, offset INIT_TEXT:szSSBP
 		call	print
 
 		mov ax, ss
 		mov cx, bp
 		call WritePtr
 
-		mov	si, offset szMemStart
+		mov	si, offset INIT_TEXT:szMemStart
 		call	print
 		
 		mov ax, [bp].initdos.wMemStart
@@ -186,19 +227,19 @@ kernel_start:
 		mov ax, [bp].initdos.wMemSize
 		call WriteHexCr
 
-		mov	si, offset szInitSize
+		mov	si, offset INIT_TEXT:szInitSize
 		call	print
 
 		mov ax, [bp].initdos.wInitSize
 		call WriteHexCr
 
-		mov	si, offset szBREAK
+		mov	si, offset INIT_TEXT:szBREAK
 		call	print
 
 		mov ax, [bp].initdos.wBreak
 		call WriteHex
 
-		mov	si, offset szDOS
+		mov	si, offset INIT_TEXT:szDOS
 		call	print
 
 		mov ax, [bp].initdos.wDOS
@@ -232,27 +273,40 @@ kernel_start:
 		mov cx, word ptr [bp].initdos.pVDDs
 		call WritePtr
 
+		endif; DEBUG
+		
 		cmp [bp].initdos.pVDDs+2, 0ffffh			; HMA, no A20 enabled yet
 		jz skipdd
 
 		; Search loop for devices
 		lds si,[bp].initdos.pVDDs
-loopdd:		push si
+loopdd:		ifdef DEBUG
+		push si
 		call	WriteDD
 		pop si
+		endif; DEBUG
 
 		push si
 		add si, initdev.sName
 
 		push cs
 		pop es
-		mov di, offset sXMSDEVICE
+		mov di, offset INIT_TEXT:sXMSDEVICE
 
 		mov cx, 8  ; selects the length of the first string as maximum for comparison
 		repe cmpsb         ; comparison of CX number of bytes
 		jne ifWrong       ; checks ZERO flag
 		pop si
 
+                mov ax, 0e31h           ; '1' Tracecode - kernel entered
+                int 010h
+		
+		xor ax,ax
+		int 16h
+
+		;mov ax, _FIXED_DATA
+		mov ds,ax
+		assume ds:_FIXED_DATA
                 ; pascal execrh(request far *rhp, struct dhdr far *dhp);
 		mov byte ptr [_CharReqHdr+0], 22	; packet size
 		mov byte ptr [_CharReqHdr+1], 0		; unit code
@@ -275,7 +329,7 @@ ifWrong:	pop si
 		lds si, dword ptr ds:[si].initdev.pNextDevice
 		jmp loopdd
 
-skipdd:
+skipdd:		ifdef DEBUG
 
 		xor	ax,ax
 		mov	al, [bp].initdos.bCurrentDrive
@@ -290,39 +344,15 @@ skipdd:
 		
 		xor ax,ax
 		int 16h
+		endif; DEBUG
 		
-                popf
-                pop bx
-                pop ax
-	endif
-	
+
 	push cs
 	pop ds
 
 	mov	bl, [bp].initdos.bBootDrive
 	mov     byte ptr ds:_BootDrive,bl ; tell where we came from
 
-	; Move INIT_TEXT segment up
-	mov	si, __InitTextStart
-	mov	di, si
-	mov	ax, __InitTextEnd		; INIT segment size
-	sub	ax, __InitTextStart+15
-	mov	cx, ax				; Save for movsb
-	shr	ax, 4				; In paragraphs
-	add	ax, [bp].initdos.wMemSize	; Free Memory size (paragraphs)
-	sub	ax, [bp].initdos.wInitSize	; Cut init structure size (paragraphs)
-	add	ax, [bp].initdos.wMemStart	; Add start segment of free memory
-	mov	es, ax				; Destination segment
-        std                     ; if there's overlap only std is safe
-        rep     movsb
-	cld
-
-        push    es
-        mov     ax, cont
-	push    ax
-        retf
-
-cont:           ; Now set up call frame
 		ifdef DEBUG
                 push bx
                 pushf              
@@ -338,33 +368,8 @@ cont:           ; Now set up call frame
 	; 2. move hma segment to HMA or leave as is (is we need move hma segment to higher
 	;    conventional memory as FreeDOS does?)
 	if 0
-                mov     cl,6
-                shl     ax,cl           ; convert kb to para
-                mov     dx,15 + INITSIZE
-                mov     cl,4
-                shr     dx,cl
-                sub     ax,dx
-                mov     es,ax
 
-                mov     dx,INITTEXTSIZE ; para aligned
-                shr     dx,cl
-                add     ax,dx
-
-                mov     ax,cs
-                mov     dx,__HMATextEnd ; para aligned
-                shr     dx,cl
-
-                add     ax,dx
-
-                mov     ds,ax
-                mov     si,-2 + INITSIZE; word aligned
-                lea     cx,[si+2]
-                mov     di,si
-                shr     cx,1
-                std                     ; if there's overlap only std is safe
-                rep     movsw
-
-                                        ; move HMA_TEXT to higher memory
+                ; move HMA_TEXT to higher memory
                 sub     ax,dx
                 mov     ds,ax           ; ds = HMA_TEXT
                 mov     ax,es
@@ -391,15 +396,6 @@ cont:           ; Now set up call frame
 
 	endif
                 
-                cld
-		assume es:INIT_TEXT
-                push    es
-                mov     ax,offset INIT_TEXT:cont
-		assume es:nothing
-                push    ax
-                retf
-
-cont2:           ; Now set up call frame
                 mov     ds,[cs:_INIT_DGROUP]
                 mov     bp,sp           ; and set up stack frame for c
 
@@ -419,15 +415,6 @@ cont2:           ; Now set up call frame
 ;	mov ds, ax			; => init data segment
 
            jmp     _FreeDOSmain
-
-szCS		db	"DOSKRNL DEBUG", 10, 13, "CS: ", 0
-szSSBP		db	" SS:BP: ", 0
-szMemStart	db	"First free memory segment: ", 0
-szMemSize	db	"Free memory size (paragraphs): ", 0
-szInitSize	db	"Init structure size (paragraphs): ", 0
-szBREAK		db	"BREAK flag: ", 0
-szDOS		db	" DOS flag: ", 0
-sXMSDEVICE	db	"XMSXXXX0"
 
 WriteDD:	mov ax, word ptr [si].initdev.pNextDevice+2
 		mov cx, word ptr [si].initdev.pNextDevice

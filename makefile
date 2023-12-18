@@ -4,6 +4,8 @@
 # valerius, 2006/10/30
 #
 
-DIRS =	utils kernel
+#utils not required at present time
+
+DIRS =	kernel # utils
          
 !include $(%ROOT)tools/mk/all.mk
