@@ -55,7 +55,6 @@ VOID ASMCFUNC FreeDOSmain(void)
   memset(_ib_start, 0, _ib_end - _ib_start);
 
   /* Already zeroed. Why zero it again? */
-
 #if 0
   /* init master environment start */
   *master_env = 0;

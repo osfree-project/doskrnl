@@ -124,8 +124,6 @@ entry:
 		push	cs
 		pop	ds
 
-		mov	FixedData, ds
-
 		; Move INIT_TEXT segment up
 		mov	si, __InitTextStart		; Source offset
 		mov	di, INIT_TEXT:kernel_start	; Destination offset
@@ -151,8 +149,7 @@ entry:
 
 		; Jump to new location
 		push    es
-		mov     ax, INIT_TEXT:cont
-		push    ax
+		push	INIT_TEXT:cont
 		retf
 	
 		; @todo insert 0:80h check here or inititalize it later with zeroes
@@ -170,7 +167,7 @@ PSP	ENDS
 INIT_TEXT	segment
 
 		org 0
-		assume cs:INIT_TEXT
+		assume cs:INIT_TEXT, ds:INIT_TEXT, es:INIT_TEXT
                 
                 ;
                 ; kernel start-up
@@ -180,7 +177,7 @@ INIT_TEXT	segment
 		; 3. Jump to C init part
 		;
 kernel_start:
-FixedData	dw	?		; _FIXED_DATA segment
+DOSDS		dw	?		; _FIXED_DATA segment
 
 		ifdef	DEBUG
 szCS		db	"DOSKRNL DEBUG", 10, 13, "CS: ", 0
@@ -196,7 +193,6 @@ sXMSDEVICE	db	"XMSXXXX0"
 cont:
 		push cs
 		pop ds
-		assume ds:INIT_TEXT
 
 
 		ifdef	DEBUG
@@ -275,11 +271,15 @@ cont:
 
 		endif; DEBUG
 		
-		cmp [bp].initdos.pVDDs+2, 0ffffh			; HMA, no A20 enabled yet
+		cmp [bp].initdos.pVDDs+2, 0ffffh			; No list or HMA, no A20 enabled yet
+		jz skipdd
+
+		cmp [bp].initdos.pVDDs+2, 0h				; No list
 		jz skipdd
 
 		; Search loop for devices
 		lds si,[bp].initdos.pVDDs
+
 loopdd:		ifdef DEBUG
 		push si
 		call	WriteDD
@@ -295,8 +295,8 @@ loopdd:		ifdef DEBUG
 
 		mov cx, 8  ; selects the length of the first string as maximum for comparison
 		repe cmpsb         ; comparison of CX number of bytes
-		jne ifWrong       ; checks ZERO flag
 		pop si
+		jne ifWrong       ; checks ZERO flag
 
                 mov ax, 0e31h           ; '1' Tracecode - kernel entered
                 int 010h
@@ -304,27 +304,61 @@ loopdd:		ifdef DEBUG
 		xor ax,ax
 		int 16h
 
-		;mov ax, _FIXED_DATA
-		mov ds,ax
-		assume ds:_FIXED_DATA
+		assume ds:_FIXED_DATA, es:nothing
+		mov ax, cs
+		add ax, offset DATASTART
+		shr ax, 4
+		mov es,ax		; DOSDS - DOS data segment
+
                 ; pascal execrh(request far *rhp, struct dhdr far *dhp);
-		mov byte ptr [_CharReqHdr+0], 22	; packet size
-		mov byte ptr [_CharReqHdr+1], 0		; unit code
-		mov byte ptr [_CharReqHdr+2], 0		; INIT command code
-		mov word ptr [_CharReqHdr+3], 0		; Status
-		push cs		; rhp
-		push offset _CharReqHdr
-		push ds		; dhp
-		push si
-		call EXECRH
+		assume es:_FIXED_DATA
+		mov byte ptr es:[_CharReqHdr+0], 22	; packet size
+		mov byte ptr es:[_CharReqHdr+1], 0		; unit code
+		mov byte ptr es:[_CharReqHdr+2], 0		; INIT command code
+		mov word ptr es:[_CharReqHdr+3], 0		; Status
+		assume es:nothing
+
+                ;lds     si,[bp+4]       ; ds:si = device header
+                mov bx, offset _FIXED_DATA:_CharReqHdr       ; es:bx = request header
+
+                push si                 ; the bloody fucking RTSND.DOS 
+                push di                 ; driver destroys SI,DI (tom 14.2.03)
+
+		push	cs
+		push	INIT_TEXT:stret
+
+		push    ds
+		push	[ds:si].initdev.pStrategy      ; construct strategy address
+		retf			; call strategy
+stret:
+                mov ax, 0e32h           ; '2' Tracecode - kernel entered
+                int 010h
+		
+		xor ax,ax
+		int 16h
+
+                pop di 
+                pop si
+                                
+		push	cs
+		push	INIT_TEXT:intret
+
+		push    ds
+		push	[ds:si].initdev.pInterrupt      ; construct interrupt address
+		retf			; call internal
+
+intret:
+
+                sti                     ; damm driver turn off ints
+                cld                     ; has gone backwards
+		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		
 		; 1) init XMS
 		; 2) init HMA
 		
 		jmp skipdd
 
-ifWrong:	pop si
-		cmp word ptr ds:[si]+2, 0ffffh			; end of list or HMA, no A20 enabled yet
+ifWrong:	cmp word ptr ds:[si]+2, 0ffffh			; end of list or HMA, no A20 enabled yet
 		jz skipdd
 		lds si, dword ptr ds:[si].initdev.pNextDevice
 		jmp loopdd
@@ -339,7 +373,7 @@ skipdd:		ifdef DEBUG
 		mov	al, [bp].initdos.bBootDrive
 		call WriteHexCr
 
-                mov ax, 0e31h           ; '1' Tracecode - kernel entered
+                mov ax, 0e33h           ; '1' Tracecode - kernel entered
                 int 010h
 		
 		xor ax,ax
@@ -416,6 +450,7 @@ skipdd:		ifdef DEBUG
 
            jmp     _FreeDOSmain
 
+		ifdef DEBUG
 WriteDD:	mov ax, word ptr [si].initdev.pNextDevice+2
 		mov cx, word ptr [si].initdev.pNextDevice
 		call WritePtr
@@ -475,6 +510,7 @@ print:		lodsb			; get token
 		cmp	al, 0		; end of string?
 		jne	printchar	; until done
 		ret			; return to caller
+		endif; DEBUG
 
 INIT_TEXT	ENDS
 
@@ -558,7 +594,7 @@ _LOWTEXT	ENDS
 
 
 _FIXED_DATA	segment 
-
+		org 0h
 ; Because of the following bytes of data, THIS MODULE MUST BE THE FIRST
 ; IN THE LINK SEQUENCE.  THE BYTE AT DS:0004 determines the SDA format in
 ; use.  A 0 indicates MS-DOS 3.X style, a 1 indicates MS-DOS 4.0-6.X style.
@@ -1108,6 +1144,7 @@ HMA_TEXT_START	ENDS
 ; so nothing will ever be below 0xffff:0031
 ;
 HMA_TEXT	segment 
+		org 0h
 begin_hma:              
                 db 10h dup (0)   ; filler [ffff:0..ffff:10]
                 db 20h dup (0)
