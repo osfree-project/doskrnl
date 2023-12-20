@@ -147,6 +147,8 @@ entry:
 		rep     movsb
 		;cld
 
+;		mov	ax, cs				; Save initial segment
+		
 		; Jump to new location
 		push    es
 		push	INIT_TEXT:cont
@@ -183,8 +185,6 @@ INIT_TEXT	segment
 ;
 
 kernel_start:
-DOSDS		dw	?		; _FIXED_DATA segment
-
 		ifdef	DEBUG
 szCS		db	"DOSKRNL DEBUG", 10, 13, "CS: ", 0
 szSSBP		db	" SS:BP: ", 0
@@ -195,8 +195,13 @@ szBREAK		db	"BREAK flag: ", 0
 szDOS		db	" DOS flag: ", 0
 		endif; DEBUG
 sXMSDEVICE	db	"XMSXXXX0"
+XMSCALL		dd	?
+DOSDS		dw	?		; _FIXED_DATA segment
+STARTSEG	dw	?
 
 cont:
+		mov	cs:[STARTSEG], ds				; Save initial segment
+
 		push cs
 		pop ds
 
@@ -204,7 +209,7 @@ cont:
 		ifdef	DEBUG
 		xor	bx, bx		; video page 0
 		
-		mov	si, offset INIT_TEXT:szCS
+		mov	si, offset cs:szCS
 		call	print
 		
 		mov ax, cs
@@ -310,6 +315,7 @@ loopdd:		ifdef DEBUG
 		add ax, offset DATASTART
 		shr ax, 4
 		mov es,ax		; DOSDS - DOS data segment
+		mov cs:[DOSDS], ax
 
 		; 1) init XMS
 
@@ -350,21 +356,11 @@ intret:
 		
 		; 2) init HMA
 
-		;push cs
-		;pop ds
-		
-;		assume ds:CONST
 		mov  ax,4300H
 		int  2fH
 		cmp  al,80H      ;is support present?
 
-		jne  no_ems      ; no, go
-
-                mov ax, 0e30h           ; '0' Tracecode - kernel entered
-                int 010h
-		
-		xor ax,ax
-		int 16h
+		jne  skipdd      ; no, go
 
 		push cs
 		pop ds
@@ -374,25 +370,40 @@ intret:
 		mov     word ptr [INIT_TEXT:XMSCALL],bx
 		mov     word ptr [INIT_TEXT:XMSCALL+2],es
 
-                mov ax, 0e31h           ; '1' Tracecode - kernel entered
-                int 010h
-		
-		xor ax,ax
-		int 16h
+		mov     ah,00h		; Init
+		call	cs:[XMSCALL]
 
-		mov     ah,00h
-		db	0e8h			; call 0:0			; (immediate far address patched)
-		dw	0
-		dw	0
-XMSCALL		equ $ - 4	; XMS driver, if detected
+		mov     ah,01h		; Get HMA
+		mov	dx, 0ffffh
+		call	cs:[XMSCALL]
 
-no_ems:
-                mov ax, 0e32h           ; '2' Tracecode - kernel entered
-                int 010h
+		mov     ah,03h		; Global Enable A20
+		call	cs:[XMSCALL]
+
 		
-		xor ax,ax
-		int 16h
+;		db	0e8h			; call 0:0			; (immediate far address patched)
+;		dw	0
+;		dw	0
+;XMSCALL		equ $ - 4	; XMS driver, if detected
+
+
+	; 2. move hma segment to HMA or leave as is (is we need move hma segment to higher
+	;    conventional memory as FreeDOS does?)
+
+                ; move HMA_TEXT to higher memory
+		mov	ax, 0ffffh
+                mov     es, ax
+                mov     di, 0           ; es:di - new HMA_TEXT address
 		
+		mov	ds, cs:[STARTSEG]
+		mov	si, __HMATextStart	; ds:si - current HMA_TEXT address
+
+		mov	ax, __HMATextEnd
+		sub	ax, __HMATextStart
+		mov	cx, ax
+
+                rep     movsb
+
 		jmp skipdd
 
 ifWrong:	cmp word ptr ds:[si]+2, 0ffffh			; end of list or HMA, no A20 enabled yet
@@ -402,6 +413,7 @@ ifWrong:	cmp word ptr ds:[si]+2, 0ffffh			; end of list or HMA, no A20 enabled y
 
 skipdd:		ifdef DEBUG
 
+		; 3) Initialize variables
 		xor	ax,ax
 		mov	al, [bp].initdos.bCurrentDrive
 		call WriteHexCr
@@ -410,11 +422,6 @@ skipdd:		ifdef DEBUG
 		mov	al, [bp].initdos.bBootDrive
 		call WriteHexCr
 
-                mov ax, 0e33h           ; '1' Tracecode - kernel entered
-                int 010h
-		
-		xor ax,ax
-		int 16h
 		endif; DEBUG
 		
 
@@ -424,49 +431,6 @@ skipdd:		ifdef DEBUG
 	mov	bl, [bp].initdos.bBootDrive
 	mov     byte ptr ds:_BootDrive,bl ; tell where we came from
 
-		ifdef DEBUG
-                push bx
-                pushf              
-                mov ax, 0e32h           ; '2' Tracecode - kernel entered
-                mov bx, 00f0h                                        
-                int 010h
-		xor ax,ax
-		int 16h
-                popf
-                pop bx
-		endif
-
-	; 2. move hma segment to HMA or leave as is (is we need move hma segment to higher
-	;    conventional memory as FreeDOS does?)
-	if 0
-
-                ; move HMA_TEXT to higher memory
-                sub     ax,dx
-                mov     ds,ax           ; ds = HMA_TEXT
-                mov     ax,es
-                sub     ax,dx
-                mov     es,ax           ; es = new HMA_TEXT
-
-                mov     si,-2 + __HMATextEnd
-                lea     cx,[si+2]
-                mov     di,si
-                shr     cx,1
-                rep     movsw
-
-		ifdef DEBUG
-                push bx
-                pushf              
-                mov ax, 0e32h           ; '2' Tracecode - kernel entered
-                mov bx, 00f0h                                        
-                int 010h
-		xor ax,ax
-		int 16h
-                popf
-                pop bx
-		endif
-
-	endif
-                
                 mov     ds,[cs:_INIT_DGROUP]
                 mov     bp,sp           ; and set up stack frame for c
 

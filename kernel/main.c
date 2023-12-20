@@ -52,7 +52,7 @@ VOID ASMCFUNC FreeDOSmain(void)
 
 
   /* clear the Init BSS area (what normally the RTL does */
-  memset(_ib_start, 0, _ib_end - _ib_start);
+  //memset(_ib_start, 0, _ib_end - _ib_start);
 
   /* Already zeroed. Why zero it again? */
 #if 0
