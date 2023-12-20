@@ -58,30 +58,6 @@ PSP	segment
 
 STACK_SIZE      equ     384/2           ; stack allocated in words
 
-;************************************************************       
-; DOSKRNL BEGINS HERE, i.e. this is byte 0 of DOSKRNL
-; Unlike standard DOS boot can be not at 0060:0000
-;************************************************************       
-;
-; On entry: 
-;	SS:SP initial stack (around 800 bytes)
-;	SS:BP contains DOSKRNL init structure
-;                        
-;0 	2 	First free segment after DOSKRNL
-;2 	2 	Size of memory - first free segment (paragraphs)
-;4 	2 	Size of init area (paragraphs)
-;6 	2 	Value of BREAK setting
-;8 	2 	Value of DOS setting
-;10 	4 	Far pointer to list of DOS DEVICE setting
-;14 	4 	Far pointer to SHELL (filepath only)
-;18 	4 	Far pointer to SHELL (arguments)
-;22 	4 	Far pointer to linked list of VDD
-;26 	1 	Current drive (1-A, 2-B, 3-C, ...)
-;27 	1 	Boot drive (1-A, 2-B, 3-C, ...)
-;???? 	??? 	???? 
-;
-;************************************************************
-
 initdos	struct
 wMemStart	dw	?
 wMemSize	dw	?
@@ -108,11 +84,35 @@ krnlstart:
 entry:
 
 ;************************************************************       
-; moves the INIT part of DOSKENL to high conventional memory (~9000:0)
-; then jumps there
-; this area is discardable and used as temporary PSP for the
+;
+; DOSKRNL BEGINS HERE, i.e. this is byte 0 of DOSKRNL
+; Unlike standard DOS boot can be not at 0060:0000
+; Moves the INIT part of DOSKENL to high conventional memory (~9000:0)
+; and jumps to new location
+; This area is discardable and used as temporary PSP for the
 ; init sequence
+;
 ;************************************************************       
+;
+; On entry: 
+;	CS = PSP segemnt
+;	SS:SP initial stack (around 800 bytes)
+;	SS:BP contains DOSKRNL init structure
+;                        
+;0 	2 	First free segment after DOSKRNL
+;2 	2 	Size of memory - first free segment (paragraphs)
+;4 	2 	Size of init area (paragraphs)
+;6 	2 	Value of BREAK setting
+;8 	2 	Value of DOS setting
+;10 	4 	Far pointer to list of DOS DEVICE setting
+;14 	4 	Far pointer to SHELL (filepath only)
+;18 	4 	Far pointer to SHELL (arguments)
+;22 	4 	Far pointer to linked list of VDD
+;26 	1 	Current drive (1-A, 2-B, 3-C, ...)
+;27 	1 	Boot drive (1-A, 2-B, 3-C, ...)
+;???? 	??? 	???? 
+;
+;************************************************************
 
                 .386                   ; We executed only on 80386+, so it is ok
 
@@ -169,13 +169,19 @@ INIT_TEXT	segment
 		org 0
 		assume cs:INIT_TEXT, ds:INIT_TEXT, es:INIT_TEXT
                 
-                ;
-                ; kernel start-up
-                ;
-		; 1. Search and initialize XMS
-		; 2. Move HMA segment to HMA
-		; 3. Jump to C init part
-		;
+;
+; kernel start-up
+;
+; On Entry:
+; CS = ES = INIT_TEXT segment
+; DS = PSP segment
+;	SS:BP contains DOSKRNL init structure
+;
+; 1. Search and initialize XMS
+; 2. Move HMA segment to HMA
+; 3. Jump to C init part
+;
+
 kernel_start:
 DOSDS		dw	?		; _FIXED_DATA segment
 
@@ -298,11 +304,6 @@ loopdd:		ifdef DEBUG
 		pop si
 		jne ifWrong       ; checks ZERO flag
 
-                mov ax, 0e31h           ; '1' Tracecode - kernel entered
-                int 010h
-		
-		xor ax,ax
-		int 16h
 
 		assume ds:_FIXED_DATA, es:nothing
 		mov ax, cs
@@ -310,7 +311,8 @@ loopdd:		ifdef DEBUG
 		shr ax, 4
 		mov es,ax		; DOSDS - DOS data segment
 
-                ; pascal execrh(request far *rhp, struct dhdr far *dhp);
+		; 1) init XMS
+
 		assume es:_FIXED_DATA
 		mov byte ptr es:[_CharReqHdr+0], 22	; packet size
 		mov byte ptr es:[_CharReqHdr+1], 0		; unit code
@@ -318,7 +320,6 @@ loopdd:		ifdef DEBUG
 		mov word ptr es:[_CharReqHdr+3], 0		; Status
 		assume es:nothing
 
-                ;lds     si,[bp+4]       ; ds:si = device header
                 mov bx, offset _FIXED_DATA:_CharReqHdr       ; es:bx = request header
 
                 push si                 ; the bloody fucking RTSND.DOS 
@@ -331,12 +332,6 @@ loopdd:		ifdef DEBUG
 		push	[ds:si].initdev.pStrategy      ; construct strategy address
 		retf			; call strategy
 stret:
-                mov ax, 0e32h           ; '2' Tracecode - kernel entered
-                int 010h
-		
-		xor ax,ax
-		int 16h
-
                 pop di 
                 pop si
                                 
@@ -353,8 +348,50 @@ intret:
                 cld                     ; has gone backwards
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		
-		; 1) init XMS
 		; 2) init HMA
+
+		;push cs
+		;pop ds
+		
+;		assume ds:CONST
+		mov  ax,4300H
+		int  2fH
+		cmp  al,80H      ;is support present?
+
+		jne  no_ems      ; no, go
+
+                mov ax, 0e30h           ; '0' Tracecode - kernel entered
+                int 010h
+		
+		xor ax,ax
+		int 16h
+
+		push cs
+		pop ds
+		ASSUME CS:INIT_TEXT, DS:INIT_TEXT
+		mov     ax,4310h
+		int     2Fh
+		mov     word ptr [INIT_TEXT:XMSCALL],bx
+		mov     word ptr [INIT_TEXT:XMSCALL+2],es
+
+                mov ax, 0e31h           ; '1' Tracecode - kernel entered
+                int 010h
+		
+		xor ax,ax
+		int 16h
+
+		mov     ah,00h
+		db	0e8h			; call 0:0			; (immediate far address patched)
+		dw	0
+		dw	0
+XMSCALL		equ $ - 4	; XMS driver, if detected
+
+no_ems:
+                mov ax, 0e32h           ; '2' Tracecode - kernel entered
+                int 010h
+		
+		xor ax,ax
+		int 16h
 		
 		jmp skipdd
 
