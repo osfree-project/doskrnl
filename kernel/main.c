@@ -44,12 +44,12 @@ STATIC VOID InitSerialPorts(VOID);
 //STATIC void CheckContinueBootFromHarddisk(void);
 STATIC void setup_int_vectors(void);
 
-struct lol FAR *LoL = &DATASTART;
+extern WORD DOSDS;
+struct lol FAR *LoL;//&DATASTART;
 
 
 VOID ASMCFUNC FreeDOSmain(void)
 {
-
 
   /* clear the Init BSS area (what normally the RTL does */
   //memset(_ib_start, 0, _ib_end - _ib_start);
@@ -63,6 +63,9 @@ VOID ASMCFUNC FreeDOSmain(void)
   master_env[3] = 0;
 #endif
 
+  // Tune List-of-Lists address
+  LoL = MK_FP(DOSDS,0);
+
   /* install DOS API and other interrupt service routines, basic kernel functionality works */
   setup_int_vectors();
 
@@ -71,14 +74,35 @@ VOID ASMCFUNC FreeDOSmain(void)
 
 #ifdef DEBUG
   /* Non-portable message kludge alert!   */
-  printf("KERNEL: Boot drive = %c\n", 'A' + LoL->BootDrive - 1);
+   printf("KERNEL:");
+  //printf("KERNEL: Boot drive = %c\n", 'A' + LoL->BootDrive - 1);
 #endif
 
 // TODO: temporary disable INSTALL= handling
 //  DoInstall();
 
   kernel();
+
 }
+
+//#ifndef __WATCOMC__
+/* for WATCOMC we can use the ones in task.c */
+intvec init_getvec(unsigned char intno)
+{
+  intvec iv;
+  disable();
+  iv = *(intvec FAR *)MK_FP(0,4 * (intno));
+  enable();
+  return iv;
+}
+
+void init_setvec(unsigned char intno, intvec vector)
+{
+  disable();
+  *(intvec FAR *)MK_FP(0,4 * intno) = vector;
+  enable();
+}
+//#endif
 
 /*
     InitializeAllBPBs()
@@ -94,6 +118,8 @@ void InitializeAllBPBs(VOID)
 {
   static char filename[] = "A:-@JUNK@-.TMP";
   int drive, fileno;
+
+  
   for (drive = 'C'; drive < 'A' + LoL->nblkdev; drive++)
   {
     filename[0] = drive;
@@ -110,12 +136,14 @@ STATIC void PSPInit(void)
   fmemset(p, 0, sizeof(psp));
 
   /* initialize all entries and exits                     */
+  
   /* CP/M-like exit point                                 */
   p->ps_exit = 0x20cd;
 
   /* CP/M-like entry point - call far to special entry    */
   p->ps_farcall = 0x9a;
   p->ps_reentry = MK_FP(0, 0x30 * 4);
+
   /* unix style call - 0xcd 0x21 0xcb (int 21, retf)      */
   p->ps_unix[0] = 0xcd;
   p->ps_unix[1] = 0x21;
@@ -133,11 +161,11 @@ STATIC void PSPInit(void)
   /* environment paragraph                                */
   p->ps_environ = DOS_PSP + 8;
   /* terminate address                                    */
-  p->ps_isv22 = getvec(0x22);
+  p->ps_isv22 = init_getvec(0x22);
   /* break address                                        */
-  p->ps_isv23 = getvec(0x23);
+  p->ps_isv23 = init_getvec(0x23);
   /* critical error address                               */
-  p->ps_isv24 = getvec(0x24);
+  p->ps_isv24 = init_getvec(0x24);
 
   /* user stack pointer - int 21                          */
   /* p->ps_stack = NULL; clear from above                 */
@@ -165,24 +193,6 @@ STATIC void PSPInit(void)
   p->ps_cmd.ctBuffer[0] = 0xd; /* command tail            */
 }
 
-#ifndef __WATCOMC__
-/* for WATCOMC we can use the ones in task.c */
-intvec getvec(unsigned char intno)
-{
-  intvec iv;
-  disable();
-  iv = *(intvec FAR *)MK_FP(0,4 * (intno));
-  enable();
-  return iv;
-}
-
-void setvec(unsigned char intno, intvec vector)
-{
-  disable();
-  *(intvec FAR *)MK_FP(0,4 * intno) = vector;
-  enable();
-}
-#endif
 
 STATIC void setup_int_vectors(void)
 {
@@ -210,34 +220,60 @@ STATIC void setup_int_vectors(void)
       { 0x2f, FP_OFF(int2f_handler) }  /* multiplex int */
     };
   struct vec *pvec;
-  struct lowvec FAR *plvec;
+  //struct lowvec FAR *plvec;
   int i;
 
+  // Not supported by DOSKRNL because we just kill MVDM
   /* save current int vectors so can restore on reboot and call original directly */
-  for (plvec = intvec_table; plvec < intvec_table + 6; plvec++)
-    plvec->isv = getvec(plvec->intno);
+  //for (plvec = intvec_table; plvec < intvec_table + 6; plvec++)
+//    plvec->isv = getvec(plvec->intno);
 
   /* install default handlers */
   for (i = 0x23; i <= 0x3f; i++)
-    setvec(i, empty_handler); /* note: int 31h segment should be DOS DS */
+    init_setvec(i, empty_handler); /* note: int 31h segment should be DOS DS */
+
   HaltCpuWhileIdle = 0;
   for (pvec = vectors; pvec < vectors + (sizeof vectors/sizeof *pvec); pvec++)
     //if ((pvec->intno & 0x80) == 0 || debugger_present == 0) // No debugger check in DOSKRNL
-      setvec(pvec->intno & 0x7F, (intvec)MK_FP(FP_SEG(empty_handler), pvec->handleroff));
+      init_setvec(pvec->intno & 0x7F, (intvec)MK_FP(FP_SEG(empty_handler), pvec->handleroff));
+
   pokeb(0, 0x30 * 4, 0xea);
   pokel(0, 0x30 * 4 + 1, (ULONG)cpm_entry);
 
   /* handlers for int 0x1b and 0x29 are in the device driver area LOWTEXT (0x70) */
-  setvec(0x1b, got_cbreak);
-  setvec(0x29, int29_handler);  /* required for printf! */
+  init_setvec(0x1b, got_cbreak);
+  init_setvec(0x29, int29_handler);  /* required for printf! */
 }
 
 STATIC void init_kernel(void)
 {
   COUNT i;
 
+  asm {
+	                  push bx
+                pushf              
+                mov ax, 0e36h           ; '0' Tracecode - kernel entered
+                mov bx, 00f0h                                        
+                int 010h
+		xor ax,ax
+		int 16h
+                popf
+                pop bx
+  };
+
   LoL->os_setver_major = LoL->os_major = MAJOR_RELEASE;
   LoL->os_setver_minor = LoL->os_minor = MINOR_RELEASE;
+  asm {
+	                  push bx
+                pushf              
+                mov ax, 0e37h           ; '0' Tracecode - kernel entered
+                mov bx, 00f0h                                        
+                int 010h
+		xor ax,ax
+		int 16h
+                popf
+                pop bx
+  };
 
   /* Init oem hook - returns memory size in KB    */
   ram_top = init_oem();

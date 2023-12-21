@@ -37,8 +37,6 @@ PSP	segment
 
                 extern  _ReqPktPtr : far
 		extern EXECRH:near
-                extern  _FreeDOSmain : near
-                extern GenStrategy: near
                 extern  _con_dev: near
                 extern  _os_release: near
                 extern  reloc_call_int2f_handler: near
@@ -125,11 +123,11 @@ entry:
 		pop	ds
 
 		; Move INIT_TEXT segment up
-		mov	si, __InitTextStart		; Source offset
-		mov	di, INIT_TEXT:kernel_start	; Destination offset
+		mov	si, __HMATextEnd	; Same as __InitTextStart Source offset
+		xor	di,di			;mov	di, I_GROUP:kernel_start	; Destination offset
 		
-		mov	ax, __InitTextEnd		; INIT segment size
-		sub	ax, __InitTextStart
+		mov	ax, __init_end		 ;__InitTextEnd		; INIT segment size
+		;sub	ax, __InitTextStart		; Not required, because always zero
 		mov	cx, ax				; Size in bytes for movsb
 		add	ax, 15
 		shr	ax, 4
@@ -151,7 +149,7 @@ entry:
 		
 		; Jump to new location
 		push    es
-		push	INIT_TEXT:cont
+		push	I_GROUP:cont
 		retf
 	
 		; @todo insert 0:80h check here or inititalize it later with zeroes
@@ -167,6 +165,8 @@ PSP	ENDS
 
 
 INIT_TEXT	segment
+
+                extern  _FreeDOSmain : near
 
 		org 0
 		assume cs:INIT_TEXT, ds:INIT_TEXT, es:INIT_TEXT
@@ -196,7 +196,8 @@ szDOS		db	" DOS flag: ", 0
 		endif; DEBUG
 sXMSDEVICE	db	"XMSXXXX0"
 XMSCALL		dd	?
-DOSDS		dw	?		; _FIXED_DATA segment
+		public _DOSDS
+_DOSDS		dw	?		; _FIXED_DATA segment
 STARTSEG	dw	?
 
 cont:
@@ -314,8 +315,8 @@ loopdd:		ifdef DEBUG
 		mov ax, cs
 		add ax, offset DATASTART
 		shr ax, 4
-		mov es,ax		; DOSDS - DOS data segment
-		mov cs:[DOSDS], ax
+		mov es,ax		; _DOSDS - DOS data segment
+		mov cs:[_DOSDS], ax
 
 		; 1) init XMS
 
@@ -431,8 +432,8 @@ skipdd:		ifdef DEBUG
 	mov	bl, [bp].initdos.bBootDrive
 	mov     byte ptr ds:_BootDrive,bl ; tell where we came from
 
-                mov     ds,[cs:_INIT_DGROUP]
-                mov     bp,sp           ; and set up stack frame for c
+                ;mov     ds,[cs:_INIT_DGROUP]
+                ;mov     bp,sp           ; and set up stack frame for c
 
 		ifdef DEBUG
                 push bx
@@ -446,10 +447,37 @@ skipdd:		ifdef DEBUG
                 pop bx
 		endif
 
-;	mov ax, ss			; => init data segment
-;	mov ds, ax			; => init data segment
+		; Switch to INIT stack
+		; This is required to prevent use of far pointers for stack variables
+                mov     sp, init_tos
+		mov	ax, ds
+		mov	ss, ax
+		
+		; clear the Init BSS area (what normally the RTL does)
 
-           jmp     _FreeDOSmain
+		; memset(_ib_start, 0, _ib_end - _ib_start);
+		;xor	ax,ax
+		;mov	es, cs:[STARTSEG]
+		;mov	di, __ib_start
+		;mov	cx, __ib_end
+		;sub	cx, __ib_start
+		
+		;stosb
+
+           ;jmp     _FreeDOSmain
+	   call     _FreeDOSmain
+
+		ifdef DEBUG
+                push bx
+                pushf              
+                mov ax, 0e30h           ; '0' Tracecode - kernel entered
+                mov bx, 00f0h                                        
+                int 010h
+		xor ax,ax
+		int 16h
+                popf
+                pop bx
+		endif
 
 		ifdef DEBUG
 WriteDD:	mov ax, word ptr [si].initdev.pNextDevice+2
@@ -525,6 +553,7 @@ INIT_TEXT_END	ENDS
 ;************************************************************       
 
 CONST	segment 
+                extern GenStrategy: near
 
                 ;
                 ; NUL device strategy
@@ -540,7 +569,7 @@ _nul_strtgy:
 _nul_intr:
                 push    es
                 push    bx
-                mov     bx,_IO_TEXT;LGROUP
+                mov     bx, LGROUP
                 mov     es,bx
                 les     bx, dword ptr [es:_ReqPktPtr]  ;es:bx--> rqheadr
                 cmp     byte ptr [es:bx+2],4    ;if read, set 0 read
@@ -558,7 +587,8 @@ _LOWTEXT	segment
 
                 ; low interrupt vectors 10h,13h,15h,19h,1Bh
                 ; these need to be at 0070:0100 (see RBIL memory.lst)
-                public _intvec_table
+		; Not used by DOSKRNL
+                ;public _intvec_table
 _intvec_table:
 		db 10h
                 dd 0
@@ -1054,20 +1084,21 @@ IB_B	ENDS
 IB_E	segment 
     public __ib_end
 __ib_end:
-IB_E	ENDS
-        ;; do not clear the other init BSS variables + STACK: too late.
-_BSS	ENDS
 
-_DATA	segment 
-; kernel startup stack (not used now)
-;                public  init_tos
-;                dw 512 dup (0)
-;init_tos:
+; kernel startup stack
+                public  init_tos
+                dw 512 dup (0)
+init_tos:
 ; the last paragraph of conventional memory might become an MCB
                 db 16 dup (0)
                 public __init_end
 __init_end:
 init_end:        
+IB_E	ENDS
+        ;; do not clear the other init BSS variables + STACK: too late.
+_BSS	ENDS
+
+_DATA	segment 
 ; blockdev private stack
                 public  blk_stk_top
                 dw 256 dup (0)

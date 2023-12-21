@@ -5,7 +5,7 @@
 #
 
 PROJ      = doskrnl
-TRGT      = $(PROJ).exe
+TRGT      = $(PROJ).com
 DESC      = dos emulation kernel
 srcfiles  = $(p)kernel$(e) $(p)entry$(e) $(p)io$(e) $(p)console$(e) $(p)serial$(e) $(p)printer$(e) $(p)dsk$(e) &
 			$(p)sysclk$(e) $(p)asmsupt$(e) $(p)execrh$(e) $(p)nlssupt$(e) $(p)procsupt$(e) $(p)dosidle$(e) $(p)int2f$(e) &
@@ -14,8 +14,8 @@ srcfiles  = $(p)kernel$(e) $(p)entry$(e) $(p)io$(e) $(p)console$(e) $(p)serial$(
 			$(p)inthndlr$(e) $(p)ioctl$(e) $(p)memmgr$(e) $(p)task$(e) $(p)newstuff$(e) $(p)nls$(e) $(p)network$(e) &
 			$(p)prf$(e) $(p)misc$(e) $(p)strings$(e) $(p)syspack$(e) $(p)lfnapi$(e) $(p)os2blockio$(e) &
 			$(p)main$(e) $(p)initoem$(e) $(p)inithma$(e) $(p)dyninit$(e) $(p)iprf$(e) $(p)initdisk$(e) &
-			$(p)initclk$(e) $(p)floppy$(e) $(p)rdpcclk$(e) $(p)wrpcclk$(e) $(p)wratclk$(e) $(p)os2fs$(e) $(p)os2dir$(e) &
-			$(p)inittextend$(e)
+			$(p)initclk$(e) $(p)floppy$(e) $(p)rdpcclk$(e) $(p)wrpcclk$(e) $(p)wratclk$(e) $(p)os2fs$(e) $(p)os2dir$(e)
+
 COM=1
 #$(p)cpu$(e) $(p)iasmsupt$(e) $(p)memdisk$(e) 
 
@@ -52,10 +52,9 @@ INSTALL_ADD = 1
 
 install_add: $(DEST)$(SEP)$(PROJ)
 
-$(DEST)$(SEP)$(PROJ): $(PATH)$(PROJ).exe
+$(DEST)$(SEP)$(PROJ): $(DEST)$(SEP)$(PROJ).com
  @$(SAY) INST     $^. $(LOG)
- $(BLD)host$(SEP)$(%HOST)$(SEP)$(RELDIR)..$(SEP)utils$(SEP)exeflat.exe $< $^@ 0x60
-# -S0x10 -S0x7d -S0x79
+ $(CP) $< $^@
 
 $(PATH)os2config.$(O): $(MYDIR)os2config.c
  @$(SAY) CC       $^. $(LOG)
@@ -71,7 +70,7 @@ $(PATH)initoem.$(O): $(MYDIR)initoem.c
 
 $(PATH)main.$(O): $(MYDIR)main.c
  @$(SAY) CC       $^. $(LOG)
- $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
+ $(verbose)$(CC) -zq -q -dDEBUG -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
 $(PATH)inithma.$(O): $(MYDIR)inithma.c
  @$(SAY) CC       $^. $(LOG)
