@@ -198,10 +198,11 @@ sXMSDEVICE	db	"XMSXXXX0"
 XMSCALL		dd	?
 		public _DOSDS
 _DOSDS		dw	?		; _FIXED_DATA segment
-STARTSEG	dw	?
+		public _DOS_PSP
+_DOS_PSP	dw	?		; PSP segment
 
 cont:
-		mov	cs:[STARTSEG], ds				; Save initial segment
+		mov	cs:[_DOS_PSP], ds				; Save initial segment
 
 		push cs
 		pop ds
@@ -216,14 +217,14 @@ cont:
 		mov ax, cs
 		call WriteHex
 		
-		mov	si, offset INIT_TEXT:szSSBP
+		mov	si, offset cs:szSSBP
 		call	print
 
 		mov ax, ss
 		mov cx, bp
 		call WritePtr
 
-		mov	si, offset INIT_TEXT:szMemStart
+		mov	si, offset cs:szMemStart
 		call	print
 		
 		mov ax, [bp].initdos.wMemStart
@@ -235,19 +236,19 @@ cont:
 		mov ax, [bp].initdos.wMemSize
 		call WriteHexCr
 
-		mov	si, offset INIT_TEXT:szInitSize
+		mov	si, offset cs:szInitSize
 		call	print
 
 		mov ax, [bp].initdos.wInitSize
 		call WriteHexCr
 
-		mov	si, offset INIT_TEXT:szBREAK
+		mov	si, offset cs:szBREAK
 		call	print
 
 		mov ax, [bp].initdos.wBreak
 		call WriteHex
 
-		mov	si, offset INIT_TEXT:szDOS
+		mov	si, offset cs:szDOS
 		call	print
 
 		mov ax, [bp].initdos.wDOS
@@ -312,9 +313,9 @@ loopdd:		ifdef DEBUG
 
 
 		assume ds:_FIXED_DATA, es:nothing
-		mov ax, cs
-		add ax, offset DATASTART
+		mov ax, offset DATASTART
 		shr ax, 4
+		add ax, cs:[_DOS_PSP]
 		mov es,ax		; _DOSDS - DOS data segment
 		mov cs:[_DOSDS], ax
 
@@ -396,7 +397,7 @@ intret:
                 mov     es, ax
                 mov     di, 0           ; es:di - new HMA_TEXT address
 		
-		mov	ds, cs:[STARTSEG]
+		mov	ds, cs:[_DOS_PSP]
 		mov	si, __HMATextStart	; ds:si - current HMA_TEXT address
 
 		mov	ax, __HMATextEnd
@@ -431,21 +432,6 @@ skipdd:		ifdef DEBUG
 
 	mov	bl, [bp].initdos.bBootDrive
 	mov     byte ptr ds:_BootDrive,bl ; tell where we came from
-
-                ;mov     ds,[cs:_INIT_DGROUP]
-                ;mov     bp,sp           ; and set up stack frame for c
-
-		ifdef DEBUG
-                push bx
-                pushf              
-                mov ax, 0e33h           ; '3' Tracecode - kernel entered
-                mov bx, 00f0h                                        
-                int 010h
-		xor ax,ax
-		int 16h
-                popf
-                pop bx
-		endif
 
 		; Switch to INIT stack
 		; This is required to prevent use of far pointers for stack variables
@@ -1452,8 +1438,8 @@ _TEXT_DGROUP dw _FIXED_DATA ;DGROUP
 _LOWTEXT	ENDS
 
 INIT_TEXT	segment 
-                public _INIT_DGROUP
-_INIT_DGROUP dw _FIXED_DATA;DGROUP
+                ;public _INIT_DGROUP
+;_INIT_DGROUP dw _FIXED_DATA;DGROUP
 INIT_TEXT	ENDS
 
 CONST	ENDS

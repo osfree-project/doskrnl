@@ -68,14 +68,15 @@ VOID ASMCFUNC FreeDOSmain(void)
 
   /* install DOS API and other interrupt service routines, basic kernel functionality works */
   setup_int_vectors();
+  
+  // Now printf works
 
   /* initialize all internal variables, process CONFIG.SYS, load drivers, etc */
   init_kernel();
 
 #ifdef DEBUG
   /* Non-portable message kludge alert!   */
-   printf("KERNEL:");
-  //printf("KERNEL: Boot drive = %c\n", 'A' + LoL->BootDrive - 1);
+  printf("KERNEL: Boot drive = %c\n", 'A' + LoL->BootDrive - 1);
 #endif
 
 // TODO: temporary disable INSTALL= handling
@@ -230,39 +231,46 @@ STATIC void setup_int_vectors(void)
 
   /* install default handlers */
   for (i = 0x23; i <= 0x3f; i++)
-    init_setvec(i, empty_handler); /* note: int 31h segment should be DOS DS */
+    init_setvec(i, MK_FP(DOS_PSP, FP_OFF(empty_handler))); /* note: int 31h segment should be DOS DS */
 
   HaltCpuWhileIdle = 0;
   for (pvec = vectors; pvec < vectors + (sizeof vectors/sizeof *pvec); pvec++)
     //if ((pvec->intno & 0x80) == 0 || debugger_present == 0) // No debugger check in DOSKRNL
-      init_setvec(pvec->intno & 0x7F, (intvec)MK_FP(FP_SEG(empty_handler), pvec->handleroff));
+      init_setvec(pvec->intno & 0x7F, (intvec)MK_FP(DOS_PSP, pvec->handleroff));
 
   pokeb(0, 0x30 * 4, 0xea);
-  pokel(0, 0x30 * 4 + 1, (ULONG)cpm_entry);
+  pokel(0, 0x30 * 4 + 1, (ULONG)MK_FP(DOS_PSP, FP_OFF(cpm_entry)));
 
   /* handlers for int 0x1b and 0x29 are in the device driver area LOWTEXT (0x70) */
-  init_setvec(0x1b, got_cbreak);
-  init_setvec(0x29, int29_handler);  /* required for printf! */
+  init_setvec(0x1b, MK_FP(DOS_PSP, FP_OFF(got_cbreak)));
+  init_setvec(0x29, MK_FP(DOS_PSP, FP_OFF(int29_handler)));  /* required for printf! */
 }
 
 STATIC void init_kernel(void)
 {
   COUNT i;
 
-  asm {
-	                  push bx
-                pushf              
-                mov ax, 0e36h           ; '0' Tracecode - kernel entered
-                mov bx, 00f0h                                        
-                int 010h
-		xor ax,ax
-		int 16h
-                popf
-                pop bx
-  };
-
   LoL->os_setver_major = LoL->os_major = MAJOR_RELEASE;
   LoL->os_setver_minor = LoL->os_minor = MINOR_RELEASE;
+
+  /* Init oem hook - returns memory size in KB    */
+  ram_top = init_oem();
+
+// Why move kernel??? Disabled
+  /* move kernel to high conventional RAM, just below the init code */
+#ifdef __WATCOMC__
+  lpTop = MK_FP(_CS, 0);
+#else
+  lpTop = MK_FP(_CS - (FP_OFF(_HMATextEnd) + 15) / 16, 0);
+#endif
+
+#if 0
+  MoveKernel(FP_SEG(lpTop));
+  lpTop = MK_FP(FP_SEG(lpTop) - 0xfff, 0xfff0);
+#endif
+
+  /* Initialize IO subsystem                                      */
+  InitIO();
   asm {
 	                  push bx
                 pushf              
@@ -274,24 +282,30 @@ STATIC void init_kernel(void)
                 popf
                 pop bx
   };
-
-  /* Init oem hook - returns memory size in KB    */
-  ram_top = init_oem();
-
-  /* move kernel to high conventional RAM, just below the init code */
-#ifdef __WATCOMC__
-  lpTop = MK_FP(_CS, 0);
-#else
-  lpTop = MK_FP(_CS - (FP_OFF(_HMATextEnd) + 15) / 16, 0);
-#endif
-
-  MoveKernel(FP_SEG(lpTop));
-  lpTop = MK_FP(FP_SEG(lpTop) - 0xfff, 0xfff0);
-
-  /* Initialize IO subsystem                                      */
-  InitIO();
   InitPrinters();
+  asm {
+	                  push bx
+                pushf              
+                mov ax, 0e38h           ; '0' Tracecode - kernel entered
+                mov bx, 00f0h                                        
+                int 010h
+		xor ax,ax
+		int 16h
+                popf
+                pop bx
+  };
   InitSerialPorts();
+  asm {
+	                  push bx
+                pushf              
+                mov ax, 0e39h           ; '0' Tracecode - kernel entered
+                mov bx, 00f0h                                        
+                int 010h
+		xor ax,ax
+		int 16h
+                popf
+                pop bx
+  };
 
   init_PSPSet(DOS_PSP);
   set_DTA(MK_FP(DOS_PSP, 0x80));
@@ -587,9 +601,12 @@ BOOL init_device(struct dhdr FAR * dhp, char *cmdLine, COUNT mode,
   return FALSE;
 }
 
+// Initialize internal DOS device drivers.
+// @todo After loading of DOSKRNL all DD chain must be fixed to point to correct segment
 STATIC void InitIO(void)
 {
   struct dhdr far *device = &LoL->nul_dev;
+
 
   /* Initialize driver chain                                      */
   do {

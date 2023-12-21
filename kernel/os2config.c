@@ -256,8 +256,8 @@ void PostConfig(void)
   sfttbl FAR *sp;
 
   /* We could just have loaded FDXMS or HIMEM */
-  if (HMAState == HMA_REQ && MoveKernelToHMA())
-    HMAState = HMA_DONE;
+  //if (HMAState == HMA_REQ && MoveKernelToHMA())
+    //HMAState = HMA_DONE;
 
   if (Config.cfgDosDataUmb)
   {
@@ -319,6 +319,8 @@ VOID configDone(VOID)
   if (UmbState == 1)
     para2far(base_seg)->m_type = MCB_LAST;
 
+// For DOSKRNL kernel in HMA already
+#if 0
   if (HMAState != HMA_DONE)
   {
     mcb FAR *p;
@@ -339,7 +341,7 @@ VOID configDone(VOID)
 
     DebugPrintf(("kernel is low, start alloc at %x", kernel_seg));
   }
-
+#endif
   /* The standard handles should be reopened here, because
      we may have loaded new console or printer drivers in CONFIG.SYS */
 }

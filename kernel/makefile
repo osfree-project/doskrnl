@@ -80,6 +80,10 @@ $(PATH)dyninit.$(O): $(MYDIR)dyninit.c
  @$(SAY) CC       $^. $(LOG)
  $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
+$(PATH)iprf.$(O): $(MYDIR)iprf.c
+ @$(SAY) CC       $^. $(LOG)
+ $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
+
 $(PATH)initdisk.$(O): $(MYDIR)initdisk.c
  @$(SAY) CC       $^. $(LOG)
  $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)

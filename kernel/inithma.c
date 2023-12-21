@@ -71,7 +71,7 @@ BYTE DosLoadedInHMA BSS_INIT(FALSE);  /* set to TRUE if loaded HIGH          */
 BYTE HMAclaimed BSS_INIT(0);          /* set to TRUE if claimed from HIMEM   */
 UWORD HMAFree BSS_INIT(0);            /* first byte in HMA not yet used      */
 
-STATIC void InstallVDISK(void);
+//STATIC void InstallVDISK(void);
 
 #ifdef DEBUG
 #if defined(__TURBOC__) || defined(__GNUC__)
@@ -162,6 +162,7 @@ int EnableHMA(VOID)
 #define HMAOFFSET  0x20
 #define HMASEGMENT 0xffff
 
+#if 0
 int MoveKernelToHMA()
 {
   void far *xms_addr;
@@ -234,6 +235,7 @@ int MoveKernelToHMA()
   return TRUE;
 
 }
+#endif
 
 /*   
     now protect against HIMEM/FDXMS/... by simulating a VDISK 
@@ -242,6 +244,8 @@ int MoveKernelToHMA()
 
     so: we install this after all drivers have been loaded
 */
+#if 0
+
 STATIC void InstallVDISK(void)
 {
   static struct {               /* Boot-Sektor of a RAM-Disk */
@@ -271,7 +275,7 @@ STATIC void InstallVDISK(void)
 
   *(WORD FAR *) MK_FP(0xffff, 0x002e) = 1024 + 64;
 }
-
+#endif
 /*
     this allocates some bytes from the HMA area
     only available if DOS=HIGH was successful
