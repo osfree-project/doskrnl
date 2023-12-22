@@ -233,7 +233,8 @@ STATIC void setup_int_vectors(void)
   for (i = 0x23; i <= 0x3f; i++)
     init_setvec(i, MK_FP(DOS_PSP, FP_OFF(empty_handler))); /* note: int 31h segment should be DOS DS */
 
-  HaltCpuWhileIdle = 0;
+  // @todo FAR
+  //HaltCpuWhileIdle = 0;
   for (pvec = vectors; pvec < vectors + (sizeof vectors/sizeof *pvec); pvec++)
     //if ((pvec->intno & 0x80) == 0 || debugger_present == 0) // No debugger check in DOSKRNL
       init_setvec(pvec->intno & 0x7F, (intvec)MK_FP(DOS_PSP, pvec->handleroff));
@@ -249,6 +250,7 @@ STATIC void setup_int_vectors(void)
 STATIC void init_kernel(void)
 {
   COUNT i;
+  struct dhdr DOSTEXTFAR ASM * pblk_dev=MK_FP(DOS_PSP, FP_OFF(&blk_dev)); /* Block device (Disk) driver           */
 
   LoL->os_setver_major = LoL->os_major = MAJOR_RELEASE;
   LoL->os_setver_minor = LoL->os_minor = MINOR_RELEASE;
@@ -320,13 +322,13 @@ STATIC void init_kernel(void)
   LoL->lastdrive = 26;
 
   /*  init_device((struct dhdr FAR *)&blk_dev, NULL, 0, &ram_top); */
-  blk_dev.dh_name[0] = dsk_init();
+  pblk_dev->dh_name[0] = dsk_init();
 
   PreConfig();
 
   /* Number of units */
-  if (blk_dev.dh_name[0] > 0)
-    update_dcb(&blk_dev);
+  if (pblk_dev->dh_name[0] > 0)
+    update_dcb(pblk_dev);
 
   /* Now config the temporary file system */
   FsConfig();
@@ -419,8 +421,8 @@ STATIC void kernel()
 {
   CommandTail Cmd;
 
-  if (master_env[0] == '\0')   /* some shells panic on empty master env. */
-    fmemcpy(master_env, "PATH=.\0\0\0\0", sizeof("PATH=.\0\0\0\0"));
+  if (*(char far *)MK_FP(DOS_PSP, FP_OFF(master_env)) == '\0')  /* some shells panic on empty master env. */
+    fmemcpy(MK_FP(DOS_PSP, FP_OFF(master_env)), "PATH=.\0\0\0\0", sizeof("PATH=.\0\0\0\0"));
 
   /* process 0       */
   /* Execute command.com from the drive we just booted from    */
@@ -465,7 +467,8 @@ STATIC void kernel()
       Config.cfgInitTail = Cmd.ctBuffer;
     }
   }
-  init_call_p_0(&Config); /* go execute process 0 (the shell) */
+  // @todo FAR
+  //init_call_p_0(&Config); /* go execute process 0 (the shell) */
 }
 
 /* check for a block device and update  device control block    */
@@ -502,6 +505,7 @@ STATIC VOID update_dcb(struct dhdr FAR * dhp)
     ++LoL->nblkdev;
   }
   (dpb - 1)->dpb_next = (void FAR *)0xFFFFFFFFl;
+  
 }
 
 /* If cmdLine is NULL, this is an internal driver */

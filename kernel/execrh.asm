@@ -43,7 +43,7 @@ HMA_TEXT	segment
 ; The stack is very critical in here.
 ;
         public  EXECRH
-	;public  INIT_EXECRH
+	public  INIT_EXECRH
 
 EXECRHM	macro 
                 push    bp              ; perform c entry
@@ -87,13 +87,13 @@ EXECRH:
 	EXECRHM
 
 HMA_TEXT	ends
-;%ifndef WATCOM
 
-;segment INIT_TEXT
 
-;INIT_EXECRH:
-	;EXECRHM
+INIT_TEXT segment
 
-;%endif
+INIT_EXECRH:
+	EXECRHM
+INIT_TEXT ends
+
 	end
 	

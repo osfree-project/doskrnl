@@ -47,8 +47,8 @@ extern struct _KernelConfig InitKernelConfig;
  */
 #define printf      init_printf
 #define sprintf     init_sprintf
-#ifndef __WATCOMC__
 #define execrh      init_execrh
+#ifndef __WATCOMC__
 #define  memcpy     init_memcpy
 #define fmemcpy     init_fmemcpy
 #define fmemset     init_fmemset
@@ -64,9 +64,7 @@ extern struct _KernelConfig InitKernelConfig;
 #define open        init_DosOpen
 
 /* execrh.asm */
-#ifndef __WATCOMC__
 WORD   ASMPASCAL execrh(request FAR *, struct dhdr FAR *);
-#endif
 
 /* asmsupt.asm */
 VOID   ASMPASCAL  memset(      void     *s,  int ch,             size_t n);
