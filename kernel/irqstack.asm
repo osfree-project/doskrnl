@@ -186,8 +186,8 @@ _init_stacks:
                 push    di
                 push    si
 
-
-		mov	ax,LGROUP
+		extern _DOS_PSP: word
+		mov	ax,cs:[_DOS_PSP]	; LGROUP
 		mov	ds,ax
 		mov	es,ax
 

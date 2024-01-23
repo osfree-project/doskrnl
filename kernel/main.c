@@ -86,8 +86,6 @@ VOID ASMCFUNC FreeDOSmain(void)
 
 }
 
-//#ifndef __WATCOMC__
-/* for WATCOMC we can use the ones in task.c */
 intvec init_getvec(unsigned char intno)
 {
   intvec iv;
@@ -103,7 +101,6 @@ void init_setvec(unsigned char intno, intvec vector)
   *(intvec FAR *)MK_FP(0,4 * intno) = vector;
   enable();
 }
-//#endif
 
 /*
     InitializeAllBPBs()

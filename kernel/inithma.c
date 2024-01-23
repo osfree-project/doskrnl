@@ -113,6 +113,7 @@ VOID hdump(BYTE FAR * p)
     this tests, if the HMA area can be enabled.
     if so, it simply leaves it on
 */
+#if 0
 
 STATIC int EnabledA20(void)
 {
@@ -151,6 +152,7 @@ int EnableHMA(VOID)
   return TRUE;
 
 }
+#endif
 
 /*
     move the kernel up to high memory
@@ -303,6 +305,7 @@ VOID FAR * HMAalloc(COUNT bytesToAllocate)
   return HMAptr;
 }
 
+#if 0
 unsigned CurrentKernelSegment = 0;
 
 void MoveKernel(unsigned NewKernelSegment)
@@ -409,4 +412,4 @@ void MoveKernel(unsigned NewKernelSegment)
 errorReturn:
   for (;;) ;
 }
-
+#endif

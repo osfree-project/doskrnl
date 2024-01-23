@@ -85,7 +85,7 @@ entry:
 ;
 ; DOSKRNL BEGINS HERE, i.e. this is byte 0 of DOSKRNL
 ; Unlike standard DOS boot can be not at 0060:0000
-; Moves the INIT part of DOSKENL to high conventional memory (~9000:0)
+; Moves the INIT part of DOSKRNL to high conventional memory (~9000:0)
 ; and jumps to new location
 ; This area is discardable and used as temporary PSP for the
 ; init sequence
@@ -123,11 +123,10 @@ entry:
 		pop	ds
 
 		; Move INIT_TEXT segment up
-		mov	si, __HMATextEnd	; Same as __InitTextStart Source offset
-		xor	di,di			;mov	di, I_GROUP:kernel_start	; Destination offset
+		mov	si, __HMATextEnd		; Same as __InitTextStart Source offset
+		xor	di,di				; Destination offset
 		
-		mov	ax, __init_end		 ;__InitTextEnd		; INIT segment size
-		;sub	ax, __InitTextStart		; Not required, because always zero
+		mov	ax, __init_end			; INIT segment size
 		mov	cx, ax				; Size in bytes for movsb
 		add	ax, 15
 		shr	ax, 4
@@ -138,6 +137,7 @@ entry:
 		add	ax, [bp].initdos.wMemSize	; Add free Memory size (paragraphs)
 		sub	ax, [bp].initdos.wInitSize	; Cut init structure size (paragraphs)
 		sub	ax, dx				; Cut Init segment size (paragraphs)
+		js	panic				; PANIC, if negative size (still simple test)
 		mov	es, ax				; Destination segment
 
 		; @todo fix for overlap???
@@ -145,16 +145,14 @@ entry:
 		rep     movsb
 		;cld
 
-;		mov	ax, cs				; Save initial segment
-		
-		; Jump to new location
+		; Far jump to new location
 		push    es
 		push	I_GROUP:cont
 		retf
-	
-		; @todo insert 0:80h check here or inititalize it later with zeroes
 
-		;db 080h - ($ - PSP) dup (090h)	; (nop opcodes) magic offset (used by exeflat)
+panic:		jmp panic				; Infinite loop for while
+
+		db 080h - ($ - PSP) dup (090h)	; (nop opcodes) magic offset (used by exeflat)
 
 beyond_entry	db   256-(beyond_entry-entry) dup (0)  ; scratch area for data (DOS_PSP)
 	       
@@ -194,6 +192,7 @@ szInitSize	db	"Init structure size (paragraphs): ", 0
 szBREAK		db	"BREAK flag: ", 0
 szDOS		db	" DOS flag: ", 0
 		endif; DEBUG
+
 sXMSDEVICE	db	"XMSXXXX0"
 XMSCALL		dd	?
 		public _DOSDS
@@ -209,7 +208,214 @@ cont:
 
 
 		ifdef	DEBUG
-		xor	bx, bx		; video page 0
+		call	dump_init
+		endif; DEBUG
+		
+		; 1) Search XMS VDD
+		cmp [bp].initdos.pVDDs+2, 0ffffh			; No list or HMA, no A20 enabled yet
+		jz skipdd
+
+		cmp [bp].initdos.pVDDs+2, 0h				; No list
+		jz skipdd
+
+		; Search loop for devices
+		lds si,[bp].initdos.pVDDs
+
+loopdd:		ifdef DEBUG
+		push si
+		call	WriteDD
+		pop si
+		endif; DEBUG
+
+		push si
+		add si, initdev.sName
+
+		push cs
+		pop es
+		mov di, offset INIT_TEXT:sXMSDEVICE
+
+		mov cx, 8  ; selects the length of the first string as maximum for comparison
+		repe cmpsb         ; comparison of CX number of bytes
+		pop si
+		jne ifWrong       ; checks ZERO flag
+
+
+		assume ds:_FIXED_DATA, es:nothing
+		mov ax, offset DATASTART
+		shr ax, 4
+		add ax, cs:[_DOS_PSP]
+		mov es,ax		; _DOSDS - DOS data segment
+		mov cs:[_DOSDS], ax
+
+		; 1) init XMS VDD
+
+		assume es:_FIXED_DATA
+		mov byte ptr es:[_CharReqHdr+0], 22	; packet size
+		mov byte ptr es:[_CharReqHdr+1], 0		; unit code
+		mov byte ptr es:[_CharReqHdr+2], 0		; INIT command code
+		mov word ptr es:[_CharReqHdr+3], 0		; Status
+		assume es:nothing
+
+                mov bx, offset _FIXED_DATA:_CharReqHdr       ; es:bx = request header
+
+                push si                 ; the bloody fucking RTSND.DOS 
+                push di                 ; driver destroys SI,DI (tom 14.2.03)
+
+		push	cs
+		push	INIT_TEXT:stret
+
+		push    ds
+		push	[ds:si].initdev.pStrategy      ; construct strategy address
+		retf			; call strategy
+stret:
+                pop di 
+                pop si
+                                
+		push	cs
+		push	INIT_TEXT:intret
+
+		push    ds
+		push	[ds:si].initdev.pInterrupt      ; construct interrupt address
+		retf			; call internal
+
+intret:
+
+                sti                     ; damm driver turn off ints
+                cld                     ; has gone backwards
+		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+		
+		; 4) Check XMS installed
+
+		mov  ax,4300H
+		int  2fH
+		cmp  al,80H      ;is support present?
+
+		jne  skipdd      ; no, go
+
+		; 5) Get XMSCALL
+		push cs
+		pop ds
+		ASSUME CS:INIT_TEXT, DS:INIT_TEXT
+		mov     ax,4310h
+		int     2Fh
+		mov     word ptr [INIT_TEXT:XMSCALL],bx
+		mov     word ptr [INIT_TEXT:XMSCALL+2],es
+
+		; 6) Init XMS driver
+		mov     ah,00h		; Init
+		call	cs:[XMSCALL]
+
+		; 7) Get HMA
+		mov     ah,01h		; Get HMA
+		mov	dx, 0ffffh
+		call	cs:[XMSCALL]
+
+		; 8) Enable A20
+		mov     ah,03h		; Global Enable A20
+		call	cs:[XMSCALL]
+
+		
+		; 9) move hma segment to HMA or leave as is (is we need move hma segment to higher
+		;    conventional memory as FreeDOS does?)
+
+                ; move HMA_TEXT to higher memory
+		mov	ax, 0ffffh
+                mov     es, ax
+                mov     di, 0           ; es:di - new HMA_TEXT address
+		
+		mov	ds, cs:[_DOS_PSP]
+		mov	si, __HMATextStart	; ds:si - current HMA_TEXT address
+
+		mov	ax, __HMATextEnd
+		sub	ax, __HMATextStart
+		mov	cx, ax
+
+                rep     movsb
+		
+		jmp skipdd
+
+ifWrong:	cmp word ptr ds:[si]+2, 0ffffh			; end of list or HMA, no A20 enabled yet
+		jz skipdd
+		lds si, dword ptr ds:[si].initdev.pNextDevice
+		jmp loopdd
+
+skipdd:		ifdef DEBUG
+
+		; 10) Fix FAR pointers
+
+		; Fix far pointers for LOW or HMA: +_nul_dev +_syscon, +_TEXT_DGROUP
+		; +_nul_intr, +instance_table, +seg _DATASTART
+		mov	ax, word ptr cs:[_DOSDS]
+		mov	word ptr cs:[_TEXT_DGROUP], ax
+		mov	word ptr cs:[instance_table], ax
+		mov	word ptr cs:[instance_table-2], ax
+
+		mov	ax, word ptr cs:[_DOS_PSP]
+
+		mov	word ptr cs:[_nul_dev+2], ax
+		mov	word ptr cs:[_syscon+2], ax
+		mov	word ptr cs:[_nul_intr_fix+1], ax
+		
+;		mov	ax, word ptr cs:[_con_dev]
+;_prn_dev
+;_aux_dev
+;_Lpt1Dev
+;_Lpt2Dev
+;_Lpt3Dev
+;_Com1Dev
+;_Com2Dev
+;_Com3Dev
+;_Com4Dev
+;_clk_dev
+;_blk_dev
+
+		; fix in HMA_TEXT: _DGROUP_
+		
+		endif; DEBUG
+		
+
+	push cs
+	pop ds
+
+	mov	bl, [bp].initdos.bBootDrive
+	mov     byte ptr ds:_BootDrive,bl ; tell where we came from
+
+		; 11) Switch to INIT stack and execute C part
+		; This is required to prevent use of far pointers for stack variables
+		cli
+                mov     sp, init_tos
+		mov	ax, ds
+		mov	ss, ax
+		sti
+		
+		; clear the Init BSS area (what normally the RTL does)
+		; memset(_ib_start, 0, _ib_end - _ib_start);
+		
+		push	cs
+		pop	es
+		mov	di, __ib_start
+		mov	cx, __ib_end
+		sub	cx, __ib_start
+		
+		rep stosb
+
+           ;jmp     _FreeDOSmain
+	   call     _FreeDOSmain
+
+		ifdef DEBUG
+                push bx
+                pushf              
+                mov ax, 0e30h           ; '0' Tracecode - kernel entered
+                mov bx, 00f0h                                        
+                int 010h
+		xor ax,ax
+		int 16h
+                popf
+                pop bx
+		endif
+
+		ifdef DEBUG
+dump_init:	xor	bx, bx		; video page 0
 		
 		mov	si, offset cs:szCS
 		call	print
@@ -282,140 +488,6 @@ cont:
 		mov cx, word ptr [bp].initdos.pVDDs
 		call WritePtr
 
-		endif; DEBUG
-		
-		cmp [bp].initdos.pVDDs+2, 0ffffh			; No list or HMA, no A20 enabled yet
-		jz skipdd
-
-		cmp [bp].initdos.pVDDs+2, 0h				; No list
-		jz skipdd
-
-		; Search loop for devices
-		lds si,[bp].initdos.pVDDs
-
-loopdd:		ifdef DEBUG
-		push si
-		call	WriteDD
-		pop si
-		endif; DEBUG
-
-		push si
-		add si, initdev.sName
-
-		push cs
-		pop es
-		mov di, offset INIT_TEXT:sXMSDEVICE
-
-		mov cx, 8  ; selects the length of the first string as maximum for comparison
-		repe cmpsb         ; comparison of CX number of bytes
-		pop si
-		jne ifWrong       ; checks ZERO flag
-
-
-		assume ds:_FIXED_DATA, es:nothing
-		mov ax, offset DATASTART
-		shr ax, 4
-		add ax, cs:[_DOS_PSP]
-		mov es,ax		; _DOSDS - DOS data segment
-		mov cs:[_DOSDS], ax
-
-		; 1) init XMS
-
-		assume es:_FIXED_DATA
-		mov byte ptr es:[_CharReqHdr+0], 22	; packet size
-		mov byte ptr es:[_CharReqHdr+1], 0		; unit code
-		mov byte ptr es:[_CharReqHdr+2], 0		; INIT command code
-		mov word ptr es:[_CharReqHdr+3], 0		; Status
-		assume es:nothing
-
-                mov bx, offset _FIXED_DATA:_CharReqHdr       ; es:bx = request header
-
-                push si                 ; the bloody fucking RTSND.DOS 
-                push di                 ; driver destroys SI,DI (tom 14.2.03)
-
-		push	cs
-		push	INIT_TEXT:stret
-
-		push    ds
-		push	[ds:si].initdev.pStrategy      ; construct strategy address
-		retf			; call strategy
-stret:
-                pop di 
-                pop si
-                                
-		push	cs
-		push	INIT_TEXT:intret
-
-		push    ds
-		push	[ds:si].initdev.pInterrupt      ; construct interrupt address
-		retf			; call internal
-
-intret:
-
-                sti                     ; damm driver turn off ints
-                cld                     ; has gone backwards
-		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-		
-		; 2) init HMA
-
-		mov  ax,4300H
-		int  2fH
-		cmp  al,80H      ;is support present?
-
-		jne  skipdd      ; no, go
-
-		push cs
-		pop ds
-		ASSUME CS:INIT_TEXT, DS:INIT_TEXT
-		mov     ax,4310h
-		int     2Fh
-		mov     word ptr [INIT_TEXT:XMSCALL],bx
-		mov     word ptr [INIT_TEXT:XMSCALL+2],es
-
-		mov     ah,00h		; Init
-		call	cs:[XMSCALL]
-
-		mov     ah,01h		; Get HMA
-		mov	dx, 0ffffh
-		call	cs:[XMSCALL]
-
-		mov     ah,03h		; Global Enable A20
-		call	cs:[XMSCALL]
-
-		
-;		db	0e8h			; call 0:0			; (immediate far address patched)
-;		dw	0
-;		dw	0
-;XMSCALL		equ $ - 4	; XMS driver, if detected
-
-
-	; 2. move hma segment to HMA or leave as is (is we need move hma segment to higher
-	;    conventional memory as FreeDOS does?)
-
-                ; move HMA_TEXT to higher memory
-		mov	ax, 0ffffh
-                mov     es, ax
-                mov     di, 0           ; es:di - new HMA_TEXT address
-		
-		mov	ds, cs:[_DOS_PSP]
-		mov	si, __HMATextStart	; ds:si - current HMA_TEXT address
-
-		mov	ax, __HMATextEnd
-		sub	ax, __HMATextStart
-		mov	cx, ax
-
-                rep     movsb
-
-		jmp skipdd
-
-ifWrong:	cmp word ptr ds:[si]+2, 0ffffh			; end of list or HMA, no A20 enabled yet
-		jz skipdd
-		lds si, dword ptr ds:[si].initdev.pNextDevice
-		jmp loopdd
-
-skipdd:		ifdef DEBUG
-
-		; 3) Initialize variables
 		xor	ax,ax
 		mov	al, [bp].initdos.bCurrentDrive
 		call WriteHexCr
@@ -423,49 +495,8 @@ skipdd:		ifdef DEBUG
 		xor	ax,ax
 		mov	al, [bp].initdos.bBootDrive
 		call WriteHexCr
+		ret
 
-		endif; DEBUG
-		
-
-	push cs
-	pop ds
-
-	mov	bl, [bp].initdos.bBootDrive
-	mov     byte ptr ds:_BootDrive,bl ; tell where we came from
-
-		; Switch to INIT stack
-		; This is required to prevent use of far pointers for stack variables
-                mov     sp, init_tos
-		mov	ax, ds
-		mov	ss, ax
-		
-		; clear the Init BSS area (what normally the RTL does)
-
-		; memset(_ib_start, 0, _ib_end - _ib_start);
-		;xor	ax,ax
-		;mov	es, cs:[STARTSEG]
-		;mov	di, __ib_start
-		;mov	cx, __ib_end
-		;sub	cx, __ib_start
-		
-		;stosb
-
-           ;jmp     _FreeDOSmain
-	   call     _FreeDOSmain
-
-		ifdef DEBUG
-                push bx
-                pushf              
-                mov ax, 0e30h           ; '0' Tracecode - kernel entered
-                mov bx, 00f0h                                        
-                int 010h
-		xor ax,ax
-		int 16h
-                popf
-                pop bx
-		endif
-
-		ifdef DEBUG
 WriteDD:	mov ax, word ptr [si].initdev.pNextDevice+2
 		mov cx, word ptr [si].initdev.pNextDevice
 		call WritePtr
@@ -555,7 +586,7 @@ _nul_strtgy:
 _nul_intr:
                 push    es
                 push    bx
-                mov     bx, LGROUP
+_nul_intr_fix:	mov     bx, 0;@todo FAR LGROUP
                 mov     es,bx
                 les     bx, dword ptr [es:_ReqPktPtr]  ;es:bx--> rqheadr
                 cmp     byte ptr [es:bx+2],4    ;if read, set 0 read
@@ -653,7 +684,7 @@ _sfthead        dd      0               ; 0004 System File Table head
                 public  _clock
 _clock          dd      0               ; 0008 CLOCK$ device
                 public  _syscon
-_syscon         dw      _IO_FIXED_DATA:_con_dev,_IO_FIXED_DATA ; 000c console device ; LGROUP
+_syscon         dw      _con_dev, 0;//@todo FAR _IO_FIXED_DATA ; 000c console device ; LGROUP
                 public  _maxsecsize
 _maxsecsize     dw      512             ; 0010 maximum bytes/sector of any block device
                 dd      0               ; 0012 pointer to buffers info structure
@@ -669,7 +700,7 @@ _nblkdev        db      0               ; 0020 number of block devices
 _lastdrive      db      0               ; 0021 value of last drive
                 public  _nul_dev
 _nul_dev:           ; 0022 device chain root
-                dw      _IO_FIXED_DATA:_con_dev, _IO_FIXED_DATA;LGROUP
+                dw      _con_dev, 0;//@todo FAR _IO_FIXED_DATA;LGROUP
                                         ; next is con_dev at init time.  
                 dw      8004h           ; attributes = char device, NUL bit set
                 dw      _nul_strtgy
@@ -749,10 +780,10 @@ _winStartupInfo:
                 dd 0 ; next startup info structure, 0:0h marks end
                 dd 0 ; far pointer to name virtual device file or 0:0h
                 dd 0 ; far pointer, reference data for virtual device driver
-                dw instance_table,seg instance_table ; array of instance data
+                dw instance_table, 0; @todo FAR seg instance_table ; array of instance data
 instance_table: ; should include stacks, Win may auto determine SDA region
                 ; we simply include whole DOS data segment
-                dw seg _DATASTART, 0 ; [SEG:OFF] address of region's base
+                dw 0, 0 ; @todo seg _DATASTART ;[SEG:OFF] address of region's base
                 dw offset markEndInstanceData ;wrt seg _DATASTART ; size in bytes
                 dd 0 ; 0 marks end of table
                 dw 0 ; and 0 length for end of instance_table entry
@@ -1170,7 +1201,7 @@ begin_hma:
 
 ; to minimize relocations
                 public _DGROUP_
-_DGROUP_        dw _FIXED_DATA;DGROUP
+_DGROUP_        dw 0; @TODO FAR _FIXED_DATA;DGROUP
 
 ;               32 bit multiplication + division
 public __U4M
@@ -1428,13 +1459,15 @@ FAIL            equ     03h
 _int24_handler: mov     al,FAIL
                 iret
 
+CONST	ENDS
+
 ;
 ; this makes some things easier
 ;
 
 _LOWTEXT	segment 
                 public _TEXT_DGROUP
-_TEXT_DGROUP dw _FIXED_DATA ;DGROUP
+_TEXT_DGROUP dw 0; @todo FAR _FIXED_DATA ;DGROUP
 _LOWTEXT	ENDS
 
 INIT_TEXT	segment 
@@ -1442,5 +1475,4 @@ INIT_TEXT	segment
 ;_INIT_DGROUP dw _FIXED_DATA;DGROUP
 INIT_TEXT	ENDS
 
-CONST	ENDS
 	END krnlstart
