@@ -1224,10 +1224,14 @@ COUNT DosSetFattr(BYTE FAR * name, UWORD attrp)
 
 UBYTE DosSelectDrv(UBYTE drv)
 {
-  current_ldt = get_cds(drv);
-
-  if (current_ldt != NULL)
-    default_drive = drv;
+  /* http://osfree.org/doku/doku.php?id=en:docs:mvm:api:6 */
+  asm mov dl, drv
+  SVC(6);
+  asm {
+  jc skip
+  mov [default_drive], dl
+  skip:
+  }
 
   return lastdrive;
 }

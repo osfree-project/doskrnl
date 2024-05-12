@@ -31,19 +31,6 @@
 #include "portab.h"
 #include "globals.h"
 
-/*                                                                      */
-/*      Write all disk buffers                                          */
-/*                                                                      */
-BOOL flush(void)
-{
- BOOL ok;
-  ok = TRUE;
-
-// Call SVC here???
-  network_redirector(REM_FLUSHALL);
-
-  return (ok);
-}
 
 /************************************************************************/
 /*                                                                      */
@@ -53,6 +40,13 @@ BOOL flush(void)
 /*                                                                      */
 /* Transfer one or more blocks to/from disk                             */
 /*                                                                      */
+/* mode:                                                                */
+/*   DSKWRITE                                                           */
+/*   DSKWRITEINT26                                                      */
+/*   DSKREADINT25                                                       */
+/*   DSKREAD                                                            */
+/*                                                                      */
+/************************************************************************/
 
 UWORD dskxfer(COUNT dsk, ULONG blkno, VOID FAR * buf, UWORD numblocks,
               COUNT mode)
