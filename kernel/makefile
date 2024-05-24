@@ -48,8 +48,6 @@ INSTALL_ADD = 1
 
 .asm: $(MYDIR)..$(SEP)drivers
 
-#$(PATH)doskrnl: $(PATH)doskrnl$(SEP)kernel$(SEP)doskrnl.exe
-
 install_add: $(DEST)$(SEP)$(PROJ)
 
 $(DEST)$(SEP)$(PROJ): $(DEST)$(SEP)$(PROJ).com

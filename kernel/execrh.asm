@@ -55,6 +55,18 @@ EXECRHM	macro
                 lds     si,[bp+4]       ; ds:si = device header
                 les     bx,[bp+8]       ; es:bx = request header
 
+		ifdef DEBUG
+                push bx
+                pushf              
+                mov ax, 0e31h           ; '1' Tracecode
+                mov bx, 00f0h                                        
+                int 010h
+		xor ax,ax
+		int 16h
+                popf
+                pop bx
+		endif
+
 
                 mov     ax, [si+6]      ; construct strategy address
                 mov     [bp+4], ax

@@ -270,6 +270,7 @@ STATIC void init_kernel(void)
 
   /* Initialize IO subsystem                                      */
   InitIO();
+  printf("iniio ok");
   asm {
 	                  push bx
                 pushf              
@@ -607,7 +608,6 @@ BOOL init_device(struct dhdr FAR * dhp, char *cmdLine, COUNT mode,
 STATIC void InitIO(void)
 {
   struct dhdr far *device = &LoL->nul_dev;
-
 
   /* Initialize driver chain                                      */
   do {
