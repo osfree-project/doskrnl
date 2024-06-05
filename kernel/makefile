@@ -51,38 +51,38 @@ INSTALL_ADD = 1
 install_add: $(DEST)$(SEP)$(PROJ)
 
 $(DEST)$(SEP)$(PROJ): $(DEST)$(SEP)$(PROJ).com
- @$(SAY) INST     $^. $(LOG)
- $(CP) $< $^@
+ $(verbose)$(SAY) INST     $^. $(LOG)
+ $(verbose)$(CP) $< $^@ $(LOG)
 
 $(PATH)os2config.$(O): $(MYDIR)os2config.c
- @$(SAY) CC       $^. $(LOG)
+ $(verbose)$(SAY) CC       $^. $(LOG)
  $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
 $(PATH)initclk.$(O): $(MYDIR)initclk.c
- @$(SAY) CC       $^. $(LOG)
+ $(verbose)$(SAY) CC       $^. $(LOG)
  $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
 $(PATH)initoem.$(O): $(MYDIR)initoem.c
- @$(SAY) CC       $^. $(LOG)
+ $(verbose)$(SAY) CC       $^. $(LOG)
  $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
 $(PATH)main.$(O): $(MYDIR)main.c
- @$(SAY) CC       $^. $(LOG)
+ $(verbose)$(SAY) CC       $^. $(LOG)
  $(verbose)$(CC) -zq -q -dDEBUG -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
 $(PATH)inithma.$(O): $(MYDIR)inithma.c
- @$(SAY) CC       $^. $(LOG)
+ $(verbose)$(SAY) CC       $^. $(LOG)
  $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
 $(PATH)dyninit.$(O): $(MYDIR)dyninit.c
- @$(SAY) CC       $^. $(LOG)
+ $(verbose)$(SAY) CC       $^. $(LOG)
  $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
 $(PATH)iprf.$(O): $(MYDIR)iprf.c
- @$(SAY) CC       $^. $(LOG)
+ $(verbose)$(SAY) CC       $^. $(LOG)
  $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
 $(PATH)initdisk.$(O): $(MYDIR)initdisk.c
- @$(SAY) CC       $^. $(LOG)
+ $(verbose)$(SAY) CC       $^. $(LOG)
  $(verbose)$(CC) -zq -q -d__WATCOM__ -d__OSFREE__ -q -i=$(PATH) -i=$(PATH).. -i=$(MYDIR) -i=$(MYDIR).. -I=$(MYDIR)..$(SEP)hdr -zq-os-s-e5-j-zl-zp1-wx-we-zgf-zff-r-ntINIT_TEXT-ndI -bt=dos -fr=$^*.err -fo=$^@ $[@ $(LOG)
 
