@@ -37,9 +37,6 @@ const UWORD days[2][13] = {
   {0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366}
 };
 
-#if 0
-extern request ASM ClkReqHdr;
-#endif
 /*
     return a pointer to an array with the days for that year
 */
@@ -57,35 +54,89 @@ const UWORD *is_leap_year_monthdays(UWORD y)
   return days[1];
 }
 
-#if 0
-UWORD DaysFromYearMonthDay(UWORD Year, UWORD Month, UWORD DayOfMonth)
-{
-  if (Year < 1980)
-    return 0;
-
-  return DayOfMonth - 1
-      + is_leap_year_monthdays(Year)[Month - 1]
-      + ((Year - 1980) * 365) + ((Year - 1980 + 3) / 4);
-
-}
-#endif
 
 void DosGetTime(struct dostime *dt)
 {
+  unsigned char hr=0;
+  unsigned char mn=0;
+  unsigned char sc=0;
+  unsigned char hd=0;
+
+  /* http://osfree.org/doku/doku.php?id=en:docs:mvm:api:13 */
+  SVC(13);
+
+  asm mov hr,ch
+  asm mov mn,cl
+  asm mov sc,dh
+  asm mov hd,dl
+
+  dt->hour = hr;
+  dt->minute = mn;
+  dt->second = sc;
+  dt->hundredth = hd;
 }
 
 int DosSetTime(const struct dostime *dt)
 {
-  return SUCCESS;
+  /* http://osfree.org/doku/doku.php?id=en:docs:mvm:api:11 */
+  unsigned char hr=dt->hour;
+  unsigned char mn=dt->minute;
+  unsigned char sc=dt->second;
+  unsigned char hd=dt->hundredth;
+  unsigned char res=0;
+
+  asm mov ch, hr
+  asm mov cl, mn
+  asm mov dh, sc
+  asm mov dl, hd
+
+  SVC(11);
+
+  asm mov res, al
+
+  return res;
 }
 
 unsigned char DosGetDate(struct dosdate *dd)
 {
-  return 0;
+  /* http://osfree.org/doku/doku.php?id=en:docs:mvm:api:12 */
+  unsigned short year=0;
+  unsigned char month=0;
+  unsigned char day=0;
+  unsigned char dow=0;
+
+  SVC(12);
+
+  asm {
+    mov year, cx
+    mov month, dh
+    mov day, dl
+    mov dow, al
+  }
+
+  dd->year=year;
+  dd->monthday=day;
+  dd->month=month;
+
+  return dow;
 }
 
 int DosSetDate(const struct dosdate *dd)
 {
-  return SUCCESS;
+  /* http://osfree.org/doku/doku.php?id=en:docs:mvm:api:10 */
+  unsigned short year=dd->year;
+  unsigned char month=dd->month;
+  unsigned char day=dd->monthday;
+  unsigned char res=0;
+
+  asm mov cx, year
+  asm mov dh, month
+  asm mov dl, day
+
+  SVC(10);
+
+  asm mov res, al
+
+  return res;
 }
 

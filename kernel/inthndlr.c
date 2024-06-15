@@ -633,8 +633,10 @@ dispatch:
     }
 
       /* Reset Drive                                                  */
+      /* http://osfree.org/doku/doku.php?id=en:docs:mvm:api:4                 */
     case 0x0d:
-      flush();
+      SVC(4);
+//      flush();
       break;
 
       /* Set Default Drive                                            */

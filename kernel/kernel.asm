@@ -68,6 +68,7 @@ pShellArgs	dd	?
 pVDDs		dd	?
 bCurrentDrive	db	?
 bBootDrive	db	?
+bLastDrive	db	?
 initdos	ends
 
 initdev	struct
@@ -84,7 +85,7 @@ entry:
 ;************************************************************       
 ;
 ; DOSKRNL BEGINS HERE, i.e. this is byte 0 of DOSKRNL
-; Unlike standard DOS boot can be not at 0060:0000
+; Unlike standard DOS boot can be not at 0060:0000 (in testing environment was at 0280:0000)
 ; Moves the INIT part of DOSKRNL to high conventional memory (~9000:0)
 ; and jumps to new location
 ; This area is discardable and used as temporary PSP for the
@@ -108,6 +109,7 @@ entry:
 ;22 	4 	Far pointer to linked list of VDD
 ;26 	1 	Current drive (1-A, 2-B, 3-C, ...)
 ;27 	1 	Boot drive (1-A, 2-B, 3-C, ...)
+;28 	1 	Last drive (1-A, 2-B, 3-C, ...)
 ;???? 	??? 	???? 
 ;
 ;************************************************************
@@ -116,12 +118,38 @@ entry:
 
 		org 0h
 		; FreeDOS kernel disables interupt to configure stack, but DOSKRNL is not, 
-		; because stack configured already.
+		; because stack configured already and interrupt disabled on DOSKRNL execution.
 		sti
 		cld
 		push	cs
 		pop	ds
 
+		if	0
+		; This code used to check DOSKRNL loading segment
+		mov	ax, cs
+		call	DWriteHex
+		jmp	DExit
+DWriteHex:
+		mov	dl,10h
+		push	ax
+		mov	al,ah
+		call	DHexByte
+		pop	ax
+DHexByte:	xor	ah,ah
+		div	dl
+		add	ax,3030h
+		mov	cl,ah
+		mov	ah,0Eh
+		call	DHexNibble
+		mov	al,cl
+DHexNibble:	cmp	al,39h
+		jbe	short DHexExit
+		add	al,7
+DHexExit:	int	10h
+		ret
+DExit:
+		endif
+		
 		; Move INIT_TEXT segment up
 		mov	si, __HMATextEnd		; Same as __InitTextStart Source offset
 		xor	di,di				; Destination offset
@@ -137,7 +165,8 @@ entry:
 		add	ax, [bp].initdos.wMemSize	; Add free Memory size (paragraphs)
 		sub	ax, [bp].initdos.wInitSize	; Cut init structure size (paragraphs)
 		sub	ax, dx				; Cut Init segment size (paragraphs)
-		js	panic				; PANIC, if negative size (still simple test)
+		cmp	ax, [bp].initdos.wMemStart	; Check is above start of free memory (segment)
+		jb	panic				; PANIC, if low then start of free memory
 		mov	es, ax				; Destination segment
 
 		; @todo fix for overlap???
@@ -150,8 +179,19 @@ entry:
 		push	I_GROUP:cont
 		retf
 
-panic:		jmp panic				; Infinite loop for while
+panic:		; Push message address
+		push	ds
+		push	offset szPanic
 
+		;@todo use SVC macro here
+		hlt
+		db 1		; Terminate with message
+		db not 1
+
+		; @todo Use mkmsgf here
+szPanic		db "SYS2238: DosKrnl - Not enough memory.", 0
+
+; @todo osFree DOSKRNL not used exeflat
 		db 080h - ($ - PSP) dup (090h)	; (nop opcodes) magic offset (used by exeflat)
 
 beyond_entry	db   256-(beyond_entry-entry) dup (0)  ; scratch area for data (DOS_PSP)
@@ -184,13 +224,27 @@ INIT_TEXT	segment
 
 kernel_start:
 		ifdef	DEBUG
-szCS		db	"DOSKRNL DEBUG", 10, 13, "CS: ", 0
+szCS		db	"CS: ", 0
 szSSBP		db	" SS:BP: ", 0
-szMemStart	db	"First free memory segment: ", 0
-szMemSize	db	"Free memory size (paragraphs): ", 0
-szInitSize	db	"Init structure size (paragraphs): ", 0
-szBREAK		db	"BREAK flag: ", 0
-szDOS		db	" DOS flag: ", 0
+szMemStart	db	"MEM startSeg: ", 0
+szMemSize	db	" memSize (prgrf): ", 0
+szInitSize	db	" initSize (prgrf): ", 0
+szBREAK		db	"BREAK: ", 0
+szDOS		db	" DOS: ", 0
+szDEVICE	db	"DEVICE: ", 0
+szSHELL		db	"SHELL: ", 0
+szSHELLARGS	db	" ARGS: ", 0
+szSPACE		db	" ", 0
+szDOSDDTYPE	db	10,13,"DOSDDTYPE: ", 0
+szDDFlags	db	" Flags: ", 0
+szDDStrategy	db	" Strat: ", 0
+szDDInterrupt	db	" Int: ", 0
+szDDName	db	" Name: ", 0
+szXMSinitDD	db	10,13,"XMS: initDD", 0
+szXMSinst	db	" inst ", 0
+szXMSinit	db	"init ", 0
+szXMSalloc	db	"alloc ", 0
+szXMSA20	db	"A20 ", 0
 		endif; DEBUG
 
 sXMSDEVICE	db	"XMSXXXX0"
@@ -239,6 +293,14 @@ loopdd:		ifdef DEBUG
 		pop si
 		jne ifWrong       ; checks ZERO flag
 
+		push	ds
+		push	si
+		push	cs
+		pop	ds
+		mov	si, offset cs:szXMSinitDD
+		call print
+		pop	si
+		pop	ds
 
 		assume ds:_FIXED_DATA, es:nothing
 		mov ax, offset DATASTART
@@ -285,6 +347,14 @@ intret:
 		;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 		
 		; 4) Check XMS installed
+		push	ds
+		push	si
+		push	cs
+		pop	ds
+		mov	si, offset cs:szXMSinst
+		call print
+		pop	si
+		pop	ds
 
 		mov  ax,4300H
 		int  2fH
@@ -302,15 +372,42 @@ intret:
 		mov     word ptr [INIT_TEXT:XMSCALL+2],es
 
 		; 6) Init XMS driver
+		push	ds
+		push	si
+		push	cs
+		pop	ds
+		mov	si, offset cs:szXMSinit
+		call print
+		pop	si
+		pop	ds
+
 		mov     ah,00h		; Init
 		call	cs:[XMSCALL]
 
 		; 7) Get HMA
+		push	ds
+		push	si
+		push	cs
+		pop	ds
+		mov	si, offset cs:szXMSalloc
+		call print
+		pop	si
+		pop	ds
+
 		mov     ah,01h		; Get HMA
 		mov	dx, 0ffffh
 		call	cs:[XMSCALL]
 
 		; 8) Enable A20
+		push	ds
+		push	si
+		push	cs
+		pop	ds
+		mov	si, offset cs:szXMSA20
+		call print
+		pop	si
+		pop	ds
+
 		mov     ah,03h		; Global Enable A20
 		call	cs:[XMSCALL]
 
@@ -339,7 +436,7 @@ ifWrong:	cmp word ptr ds:[si]+2, 0ffffh			; end of list or HMA, no A20 enabled y
 		lds si, dword ptr ds:[si].initdev.pNextDevice
 		jmp loopdd
 
-skipdd:		ifdef DEBUG
+skipdd:		;ifdef DEBUG
 
 		; 10) Fix FAR pointers
 
@@ -371,26 +468,26 @@ skipdd:		ifdef DEBUG
 
 		; fix in HMA_TEXT: _DGROUP_
 		
-		endif; DEBUG
+		;endif; DEBUG
 		
 
-	push cs
-	pop ds
+		push cs
+		pop ds
 
-	mov	bl, [bp].initdos.bBootDrive
-	mov     byte ptr ds:_BootDrive,bl ; tell where we came from
+		mov	bl, [bp].initdos.bBootDrive
+		mov     byte ptr ds:_BootDrive,bl ; tell where we came from
 
 		; 11) Switch to INIT stack and execute C part
 		; This is required to prevent use of far pointers for stack variables
 		cli
-                mov     sp, init_tos
+		mov     sp, init_tos
 		mov	ax, ds
 		mov	ss, ax
 		sti
 		
 		; clear the Init BSS area (what normally the RTL does)
 		; memset(_ib_start, 0, _ib_end - _ib_start);
-		
+		xor	ax, ax
 		push	cs
 		pop	es
 		mov	di, __ib_start
@@ -399,8 +496,8 @@ skipdd:		ifdef DEBUG
 		
 		rep stosb
 
-           ;jmp     _FreeDOSmain
-	   call     _FreeDOSmain
+
+		call     _FreeDOSmain
 
 		ifdef DEBUG
                 push bx
@@ -429,18 +526,19 @@ dump_init:	xor	bx, bx		; video page 0
 		mov ax, ss
 		mov cx, bp
 		call WritePtr
+		call WriteCr
 
 		mov	si, offset cs:szMemStart
 		call	print
 		
 		mov ax, [bp].initdos.wMemStart
-		call WriteHexCr
+		call WriteHex
 
 		mov	si, offset szMemSize
 		call	print
 
 		mov ax, [bp].initdos.wMemSize
-		call WriteHexCr
+		call WriteHex
 
 		mov	si, offset cs:szInitSize
 		call	print
@@ -460,28 +558,52 @@ dump_init:	xor	bx, bx		; video page 0
 		mov ax, [bp].initdos.wDOS
 		call WriteHexCr
 
+		mov	si, offset cs:szDEVICE
+		call	print
+
 		mov ax, word ptr [bp].initdos.pDevices+2
 		mov cx, word ptr [bp].initdos.pDevices
 		call WritePtr
+		
+		call WriteCr
 
 		lds si,[bp].initdos.pDevices
 		call print
 		call WriteCr
 
+		push	cs
+		pop	ds
+		mov	si, offset cs:szSHELL
+		call	print
+
 		mov ax, word ptr [bp].initdos.pShell+2
 		mov cx, word ptr [bp].initdos.pShell
 		call WritePtr
+
+		push	cs
+		pop	ds
+		mov	si, offset cs:szSPACE
+		call	print
 		
 		lds si,[bp].initdos.pShell
 		call print
-		call WriteCr
+		
+		push	cs
+		pop	ds
+		mov	si, offset cs:szSHELLARGS
+		call	print
 
 		mov ax, word ptr [bp].initdos.pShellArgs+2
 		mov cx, word ptr [bp].initdos.pShellArgs
 		call WritePtr
 
+		push	cs
+		pop	ds
+		mov	si, offset cs:szSPACE
+		call	print
+
 		lds si,[bp].initdos.pShellArgs
-		call print
+		call pprint
 		call WriteCr
 
 		mov ax, word ptr [bp].initdos.pVDDs+2
@@ -495,42 +617,94 @@ dump_init:	xor	bx, bx		; video page 0
 		xor	ax,ax
 		mov	al, [bp].initdos.bBootDrive
 		call WriteHexCr
+
+		xor	ax,ax
+		mov	al, [bp].initdos.bLastDrive
+		call WriteHexCr
+
 		ret
 
-WriteDD:	mov ax, word ptr [si].initdev.pNextDevice+2
+WriteDD:	push	ds
+		push	si
+		push	cs
+		pop	ds
+		mov	si, offset cs:szDOSDDTYPE
+		call print
+		pop	si
+		pop	ds
+
+		mov ax, word ptr [si].initdev.pNextDevice+2
 		mov cx, word ptr [si].initdev.pNextDevice
 		call WritePtr
-		
+
+		push	ds
+		push	si
+		push	cs
+		pop	ds
+		mov	si, offset cs:szDDFlags
+		call print
+		pop	si
+		pop	ds
+
 		mov ax, [si].initdev.wFlags
-		call WriteHexCr
+		call WriteHex
+
+		push	ds
+		push	si
+		push	cs
+		pop	ds
+		mov	si, offset cs:szDDStrategy
+		call print
+		pop	si
+		pop	ds
 
 		mov ax, [si].initdev.pStrategy
-		call WriteHexCr
+		call WriteHex
+
+		push	ds
+		push	si
+		push	cs
+		pop	ds
+		mov	si, offset cs:szDDInterrupt
+		call print
+		pop	si
+		pop	ds
 
 		mov ax, [si].initdev.pInterrupt
-		call WriteHexCr
+		call WriteHex
 		
 		test [si].initdev.wFlags, 8000h
 		jz WriteDDExit			; Block device
-		add si, initdev.sName		; Not shure if this ok, but all tested configurations ends with NULL
-		
+
+		push	ds
+		push	si
+		push	cs
+		pop	ds
+		mov	si, offset cs:szDDName
 		call print
-		call WriteCR
-		;sub si, initdev.sName
+		pop	si
+		pop	ds
+
+		add si, initdev.sName		; Not shure if this ok, but all tested configurations ends with NULL
+		call print
+		
 WriteDDExit:	ret
 
 WritePtr:	call WriteHex
                 mov ax, 0e3ah
                 int 010h
 		mov ax, cx
-WriteHexCr:
+
 		call	WriteHex
+		ret
+		
+WriteHexCr:	call	WriteHex
 WriteCr:	mov	ax, 0e0dh
 		int	10h
 		mov	al, 0ah
 		int	10h
 		ret
-		
+
 WriteHex:
 		mov	dl,10h
 		push	ax
@@ -555,6 +729,15 @@ printchar:	mov	ah, 0eh		; print it
 print:		lodsb			; get token
 		cmp	al, 0		; end of string?
 		jne	printchar	; until done
+		ret			; return to caller
+
+pprint:		lodsb			; get size
+		mov	bl, al
+		mov	ah, 0eh		; print char
+pprintchar:	lodsb
+		int	10h		; via TTY mode
+		dec	bl
+		jnz	pprintchar
 		ret			; return to caller
 		endif; DEBUG
 
