@@ -1,0 +1,12 @@
+Some information about supported/unsupported API
+
+int 21h
+
+ax=3303h/3304h 
+	Works as in most MS-DOS versions, i.e. return AL=-1
+
+ax=33fah
+ax=33fch
+ax=33ffh
+	FreeDOS extensions
+

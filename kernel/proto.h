@@ -101,7 +101,6 @@ COUNT DosSetFtimeSft(int sft_idx, date dp, time tp);
 #define DosSetFtime(hndl, dp, tp) DosSetFtimeSft(get_sft_idx(hndl), (dp), (tp))
 COUNT DosGetFattr(BYTE FAR * name);
 COUNT DosSetFattr(BYTE FAR * name, UWORD attrp);
-UBYTE DosSelectDrv(UBYTE drv);
 COUNT DosDelete(BYTE FAR * path, int attrib);
 COUNT DosRename(BYTE FAR * path1, BYTE FAR * path2);
 COUNT DosRenameTrue(BYTE * path1, BYTE * path2, int attrib);

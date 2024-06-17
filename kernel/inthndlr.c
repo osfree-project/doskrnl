@@ -641,7 +641,18 @@ dispatch:
 
       /* Set Default Drive                                            */
     case 0x0e:
-      lr.AL = DosSelectDrv(lr.DL);
+      {
+      /* http://osfree.org/doku/doku.php?id=en:docs:mvm:api:6 */
+      UBYTE drv = lr.DL;
+      asm mov dl, drv
+      SVC(6);
+      asm {
+        jc skip
+        mov [default_drive], dl
+      skip:
+      }
+      lr.AL = lastdrive;
+      }
       break;
 
     case 0x0f:

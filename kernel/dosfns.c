@@ -1222,20 +1222,6 @@ COUNT DosSetFattr(BYTE FAR * name, UWORD attrp)
   return dos_setfattr(PriPathName, attrp);
 }
 
-UBYTE DosSelectDrv(UBYTE drv)
-{
-  /* http://osfree.org/doku/doku.php?id=en:docs:mvm:api:6 */
-  asm mov dl, drv
-  SVC(6);
-  asm {
-  jc skip
-  mov [default_drive], dl
-  skip:
-  }
-
-  return lastdrive;
-}
-
 COUNT DosDelete(BYTE FAR * path, int attrib)
 {
   COUNT result;
